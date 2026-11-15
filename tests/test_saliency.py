@@ -24,9 +24,10 @@ class TinyModel(nn.Module):
     y0 = +sum(relu(x))  -> gradiente a montante todo positivo
     y1 = -sum(relu(x))  -> gradiente a montante todo negativo
 
-    E' o menor modelo que separa as tres regras: com y0 (a montante > 0) so'
-    `guided` usa o sinal de x; com y1 (a montante < 0) `deconv` e `guided`
-    zeram tudo e `vanilla` nao.
+    E' o menor modelo que separa as tres regras: `vanilla` olha o sinal de x,
+    `deconv` olha o sinal do gradiente a montante e `guided` olha os dois. Com
+    y0 (a montante > 0) vanilla e guided coincidem; com y1 (a montante < 0)
+    deconv e guided zeram tudo e vanilla nao.
     """
 
     def __init__(self, mode: str = "vanilla") -> None:
@@ -50,7 +51,7 @@ def _grad(model: nn.Module, x: torch.Tensor, class_idx: int, mode: str) -> torch
 @pytest.mark.parametrize(
     "mode,expected",
     [
-        ("vanilla", [1.0, 1.0, 1.0, 1.0]),
+        ("vanilla", [0.0, 1.0, 0.0, 1.0]),
         ("deconv", [1.0, 1.0, 1.0, 1.0]),
         ("guided", [0.0, 1.0, 0.0, 1.0]),
     ],
@@ -63,7 +64,7 @@ def test_relu_rule_with_positive_upstream(mode, expected):
 @pytest.mark.parametrize(
     "mode,expected",
     [
-        ("vanilla", [1.0, 1.0, 1.0, 1.0]),
+        ("vanilla", [0.0, 1.0, 0.0, 1.0]),
         ("deconv", [0.0, 0.0, 0.0, 0.0]),
         ("guided", [0.0, 0.0, 0.0, 0.0]),
     ],
@@ -71,6 +72,29 @@ def test_relu_rule_with_positive_upstream(mode, expected):
 def test_relu_rule_with_negative_upstream(mode, expected):
     grad = _grad(TinyModel(), X, class_idx=1, mode=mode)
     assert torch.equal(grad, torch.tensor(expected))
+
+
+def test_vanilla_matches_autograd():
+    """`vanilla` tem que ser o gradiente comum — inclusive a mascara x > 0.
+
+    Teste de regressao: a primeira versao deixava o gradiente passar sempre
+    pelo ReLU, o que nao e' o gradiente da rede (e produzia mapas densos com
+    pico ~10^6 em vez de contornos).
+    """
+    torch.manual_seed(0)
+    model = nn.Sequential(
+        nn.Conv2d(3, 4, 3, padding=1), nn.ReLU(),
+        nn.Conv2d(4, 2, 3, padding=1), nn.ReLU(),
+        nn.Flatten(), nn.Linear(2 * 8 * 8, 5),
+    )
+    x = torch.randn(1, 3, 8, 8)
+
+    xr = x.clone().requires_grad_(True)
+    (grad,) = torch.autograd.grad(model(xr)[0, 3], xr)
+    expected = grad[0].abs().amax(dim=0)
+
+    heatmap, _ = saliency(model, x, 3, mode="vanilla")
+    assert torch.allclose(heatmap, expected, atol=1e-6)
 
 
 def test_unknown_mode_is_rejected():
