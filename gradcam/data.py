@@ -89,6 +89,17 @@ class CocoVal:
     def object_names(self, image_id: int) -> list[str]:
         return sorted(self.boxes[image_id])
 
+    def verbatim_categories(self, imagenet_labels: Sequence[str]) -> list[str]:
+        """Categorias COCO que sao *exatamente* uma classe ImageNet.
+
+        Sao 18 das 80 (ver plans/general_plan.md, secao 0). Comparar rotulo
+        COCO com rotulo ImageNet fora desse conjunto nao faz sentido: `person`,
+        `car` e `dog` do COCO nao tem contraparte 1:1 no ImageNet. Todo script
+        que filtra por classe deve passar por aqui, senao a lista se duplica.
+        """
+        label_set = set(imagenet_labels)
+        return sorted({name for name in self.categories.values() if name in label_set})
+
     def largest_object(self, image_id: int) -> tuple[str, Box] | None:
         """Categoria com a maior area anotada na imagem."""
         best: tuple[str, Box] | None = None

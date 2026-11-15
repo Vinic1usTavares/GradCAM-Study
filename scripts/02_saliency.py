@@ -63,8 +63,7 @@ def select_records(coco: CocoVal, model, labels: list[str], args) -> list[dict]:
     interpretaveis para a figura do seminario. Nao descartamos as outras, so'
     as colocamos no fim, para `--n` grande nao quebrar.
     """
-    label_set = set(labels)
-    verbatim = sorted({c for c in coco.categories.values() if c in label_set})
+    verbatim = coco.verbatim_categories(labels)
     ids = coco.stratified_subset(
         args.per_category, seed=args.seed, categories=verbatim
     )

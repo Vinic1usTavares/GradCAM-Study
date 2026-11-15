@@ -65,8 +65,8 @@ scripts/           um executável por experimento
 |---|---|
 | 0. Ambiente, downloads, sanity check | **concluída** — top-1 63%, pytest 7/7 |
 | 1. Saliency de gradiente | **concluída** — `02_saliency.py`, 4 imagens × 2 classes |
-| 2. Deconv / Guided Backprop | **concluída** — 3 mapas lado a lado, pytest 19/19 |
-| 3. Teste de não-discriminação de classe | pendente |
+| 2. Deconv / Guided Backprop | **concluída** — 3 mapas lado a lado |
+| 3. Teste de não-discriminação de classe | **concluída** — 0,999 em deconv/guided vs 0,642 em vanilla |
 | 4. Grad-CAM | pendente |
 | 5. CAM vs Grad-CAM (§3.1) | pendente |
 | 6. Guided Grad-CAM | pendente |
@@ -75,18 +75,28 @@ scripts/           um executável por experimento
 | 9. Ablações | pendente |
 | 10. Sanity checks (Adebayo) | pendente |
 
-Figuras das Fases 1–2 em `results/figures/` (`--overlay` troca cinza por jet):
+Figuras das Fases 1–3 em `results/figures/`; métricas em `results/metrics/`
+(`--overlay` troca cinza por jet):
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\02_saliency.py            # ~30 s em CPU
+.\.venv\Scripts\python.exe scripts\02_saliency.py              # ~30 s em CPU
+.\.venv\Scripts\python.exe scripts\03_class_discrimination.py  # ~75 s em CPU
 ```
 
 O resultado é o do artigo: as três regras produzem estéticas distintas na mesma
-imagem e classe — `vanilla` é ruído de alta frequência sem contorno,
+imagem e classe — `vanilla` é ruído fino com um blob difuso sobre o objeto,
 `deconv` é ruído com estrutura de grade, `guided` desenha o contorno do objeto
-(vaso, laptop, parquímetros). A diferença de magnitude é de ~6 ordens: pico de
-`|∂y/∂x|` ≈ 10⁵–10⁶ em `vanilla`, ≈ 4–8 em `deconv` e ≈ 1–2 em `guided`.
-Isso é o que torna inevitável normalizar cada mapa por conta própria.
+(vaso, laptop, parquímetros). Os picos de `|∂y/∂x|` diferem por ~20× (~0,3 em
+`vanilla`, ~6 em `deconv`, ~2 em `guided`), e a mediana fica em ~4% do pico —
+por isso as figuras normalizam cada mapa por si, com corte no quantil 99% e
+gamma (escala de exibição, nunca de métrica).
+
+E o defeito que o Grad-CAM conserta: `Spearman` entre o mapa da classe top-1 e o
+da top-2 na **mesma** imagem é 0,999 em `deconv`/`guided` — os mapas localizam o
+objeto, mas não dizem qual classe está sendo vista. Em `vanilla` cai para 0,642,
+ainda longe de discriminar. Controle: entre imagens diferentes a correlação vai
+a ~0, então a métrica não é degenerada.
+
 
 ## Reprodutibilidade
 
@@ -103,8 +113,9 @@ Fluxo do colaborador: clonar → `pip install -r requirements.txt` →
 ## Medições
 
 Registradas no `plans/general_plan.md`, seção 0. Resumo: VGG-16 em CPU
-(~330 ms/forward), top-1 de 63% em 27 imagens do COCO val2017 restritas às 18
-categorias que são classes ImageNet verbatim.
+(~330 ms/forward, ~1 s/backward), top-1 de 63% em 27 imagens do COCO val2017
+restritas às 18 categorias que são classes ImageNet verbatim; não-discriminação
+de classe de 0,999 (deconv/guided) e 0,642 (vanilla) em 16 imagens.
 
 Decisão de ambiente: **CPU**, não GPU. Não existe wheel CUDA do torch 2.15 para
 Python 3.14 (os índices param em 2.14.1+cu126), e ~330 ms/forward é suficiente

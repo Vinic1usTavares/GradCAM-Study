@@ -26,9 +26,10 @@ aparece na tela é o número que o projeto mediu.
 | 7 | Escala de exibição | `viz.scale_for_display(high=0.99, gamma=0.5)` em **toda** figura de gradiente (decisão de `general_plan.md` §2.5), nunca em métrica |
 | 8 | Grades de figura | delegar a `viz.figure_grid`; `deck.py` só adiciona o que falta (bootstrap, cache, zoom) |
 
-A decisão 7 é um slide por si só, e entra no `01_saliency`: o pico do gradiente
-vanilla é ~10⁵–10⁶ e a mediana ~5% disso. Normalizar pelo máximo deixa o mapa
-quase preto; o corte no quantil 99% mais gamma 0,5 é o que faz a textura aparecer.
+A decisão 7 é um slide por si só, e entra no `01_saliency`: a mediana do mapa
+fica em ~4% do pico (~0,3 em vanilla, ~6 em deconv, ~2 em guided). Normalizar
+pelo máximo deixa o mapa quase preto; o corte no quantil 99% mais gamma 0,5 é o
+que faz a textura aparecer.
 Vale dizer em voz alta que **escala de exibição ≠ escala de métrica**.
 
 ### Por que outputs commitados
@@ -107,7 +108,7 @@ Tempos conforme §6. Soma 29 min + 3 min de folga = 32 min.
 |---|---|---|---|---|---|
 | `00_indice` | 1 · 2 min | "onde o modelo olha?" | agenda cronometrada com links; `deck.setup()`; teaser: GB do **gato** e do **cachorro** na mesma foto, quase idênticos | 10 s | Fase 0 ✅ |
 | `01_saliency` | 2 · 3 min | "e se eu derivar a saída em relação à imagem?" | `grad` cru (3×224×224) → um canal → `max\|·\|`; **escala de exibição** (quantil 99% + gamma); 1 imagem × 2 classes, cinza | 4 s | Fase 1 ✅ |
-| `02_relus` | 3 · 4 min | "por que Deconv e Guided parecem melhores?" | 1 célula com as 3 linhas de máscara (o slide **é** o código); 3 mapas lado a lado; picos (`10⁶` / `10⁰` / `10⁰`); **punchline:** Spearman(gato, cachorro) ≈ 0,9 em barras | 5 s | Fase 2 ✅ / Fase 3 |
+| `02_relus` | 3 · 4 min | "por que Deconv e Guided parecem melhores?" | 1 célula com as 3 linhas de máscara (o slide **é** o código); 3 mapas lado a lado; picos (~0,3 / ~6 / ~2); **punchline:** Spearman(classe A, classe B) = 0,999 em deconv/guided vs 0,642 em vanilla, em barras | 5 s | Fase 2 ✅ / Fase 3 ✅ |
 | `03_cam` | 4 · 2 min | "CAM: e se eu tirar o FC?" | cirurgia no ResNet18 `conv → GAP → fc`; CAM via hook; custo de 2,98% top-1 | 1 s | Fase 5 |
 | `04_gradcam` | 5 · 4 min | "como obter CAM sem trocar a arquitetura?" | **derivação em 8 células**: hook em `A` → `y^c` → one-hot → `α=GAP(∂y/∂A)` → `ΣαA` → `ReLU` → upsample → overlay; célula-espelho `gradcam(model, x, c)`; ablação ReLU on/off | 3 s | Fase 4 |
 | `05_equivalencia` | 6 · 3 min | "Grad-CAM é mesmo um CAM generalizado?" | `w_k = Z·α_k`; scatter CAM × Grad-CAM na mesma camada; Spearman > 0,9 | 1 s | Fase 5 |
@@ -139,9 +140,10 @@ rodou tudo aqui?".
 
 **`02_relus`** — o "código como slide" (`g * (g > 0) * (x > 0)`) é o momento em que
 a plateia entende que os três métodos diferem em uma linha. Vale mostrar os picos
-medidos (vanilla `10⁵–10⁶`, deconv `10⁰`, guided `10⁰`) para justificar por que cada
-mapa é normalizado por si. Fechar com a medição de Fase 3, não com impressão visual;
-enquanto a Fase 3 não existir, a punchline fica como pergunta em aberto.
+medidos (vanilla ~0,3, deconv ~6, guided ~2) para justificar por que cada
+mapa é normalizado por si. Fechar com a medição de Fase 3, não com impressão
+visual: `class_discrimination.json` já existe (0,999 em deconv/guided, 0,642 em
+vanilla, n=16), então a punchline deixou de ser pergunta em aberto.
 
 **`04_gradcam`** — centro do seminário. Oito células pequenas, cada uma com uma
 equação do paper no markdown acima. A nona célula é a chamada de biblioteca que
@@ -310,4 +312,5 @@ Nesta ordem:
 |---|---|---|
 | 2026-11-15 | `b35648d` | versão inicial: 11 notebooks, cache de `results/metrics/`, `webpdf`, asset gato+cachorro |
 | 2026-11-15 | `6f3902e` | pós-pull (Fases 1–2): `deck.grid` passa a delegar a `viz.figure_grid`; escala de exibição vira decisão fixa (item 7 da §0); runtimes recalibrados com backward medido em 1,1 s; `01`/`02` promovidos para "agora"; critério de tamanho do `.ipynb` corrigido para 4 MB com dpi 110 |
+| 2026-11-15 | `9b55397` | pós-Fase 3: corrige a magnitude de `vanilla` (a regra estava "passa sempre"; agora `x > 0`, pico ~0,3 em vez de 10⁵–10⁶) e preenche a punchline de `02_relus` com `class_discrimination.json` (0,999 / 0,642, n=16) |
 

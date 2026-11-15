@@ -1,0 +1,276 @@
+{
+  "script": "03_class_discrimination.py",
+  "generated_at": "2026-11-15T22:20:35+00:00",
+  "model": "vgg16",
+  "seed": 0,
+  "n_images": 16,
+  "pair_scheme": "top1_vs_top2",
+  "metric": "spearman(map_a, map_b) sobre max|grad| por pixel",
+  "display_scale": {
+    "high": 0.99,
+    "gamma": 0.5,
+    "applies_to": "figuras apenas"
+  },
+  "aggregate": {
+    "vanilla": {
+      "n_valid": 16,
+      "mean": 0.6418030564225925,
+      "median": 0.6497596467538775,
+      "std": 0.09036464762705272
+    },
+    "deconv": {
+      "n_valid": 16,
+      "mean": 0.9991365838349291,
+      "median": 0.9992494278730084,
+      "std": 0.00047853713170105324
+    },
+    "guided": {
+      "n_valid": 16,
+      "mean": 0.9988780599107068,
+      "median": 0.9991779047565734,
+      "std": 0.0010714411728711898
+    }
+  },
+  "per_image": [
+    {
+      "image_id": 76731,
+      "truth": "laptop",
+      "class_a": 620,
+      "class_b": 709,
+      "label_a": "laptop",
+      "label_b": "pencil box",
+      "prob_a": 0.46201303601264954,
+      "prob_b": 0.12340743094682693,
+      "rho": {
+        "vanilla": 0.5237373850776799,
+        "deconv": 0.9993709132244675,
+        "guided": 0.9984933663806402
+      }
+    },
+    {
+      "image_id": 162366,
+      "truth": "parking meter",
+      "class_a": 571,
+      "class_b": 707,
+      "label_a": "gas pump",
+      "label_b": "pay-phone",
+      "prob_a": 0.4062401354312897,
+      "prob_b": 0.2629302442073822,
+      "rho": {
+        "vanilla": 0.7879036810276868,
+        "deconv": 0.9997120688705227,
+        "guided": 0.9998147968539604
+      }
+    },
+    {
+      "image_id": 164969,
+      "truth": "pizza",
+      "class_a": 963,
+      "class_b": 940,
+      "label_a": "pizza",
+      "label_b": "spaghetti squash",
+      "prob_a": 0.9205790162086487,
+      "prob_b": 0.02176232635974884,
+      "rho": {
+        "vanilla": 0.4947776051799453,
+        "deconv": 0.999108925347469,
+        "guided": 0.9991411639357334
+      }
+    },
+    {
+      "image_id": 167240,
+      "truth": "vase",
+      "class_a": 883,
+      "class_b": 804,
+      "label_a": "vase",
+      "label_b": "soap dispenser",
+      "prob_a": 0.8822006583213806,
+      "prob_b": 0.030886175110936165,
+      "rho": {
+        "vanilla": 0.6586331327264843,
+        "deconv": 0.9996064758247569,
+        "guided": 0.999672156560383
+      }
+    },
+    {
+      "image_id": 231088,
+      "truth": "umbrella",
+      "class_a": 879,
+      "class_b": 701,
+      "label_a": "umbrella",
+      "label_b": "parachute",
+      "prob_a": 0.9999450445175171,
+      "prob_b": 2.5593571990611963e-05,
+      "rho": {
+        "vanilla": 0.711672942267256,
+        "deconv": 0.9991271165540249,
+        "guided": 0.9996480783159023
+      }
+    },
+    {
+      "image_id": 232348,
+      "truth": "toaster",
+      "class_a": 859,
+      "class_b": 550,
+      "label_a": "toaster",
+      "label_b": "espresso maker",
+      "prob_a": 0.7291984558105469,
+      "prob_b": 0.1734115332365036,
+      "rho": {
+        "vanilla": 0.6089413014009746,
+        "deconv": 0.9976492198573012,
+        "guided": 0.9990854705034488
+      }
+    },
+    {
+      "image_id": 236730,
+      "truth": "zebra",
+      "class_a": 340,
+      "class_b": 351,
+      "label_a": "zebra",
+      "label_b": "hartebeest",
+      "prob_a": 0.9999994039535522,
+      "prob_b": 2.788045208035328e-07,
+      "rho": {
+        "vanilla": 0.6317541459450937,
+        "deconv": 0.9987649148223232,
+        "guided": 0.9992146455774134
+      }
+    },
+    {
+      "image_id": 269866,
+      "truth": "microwave",
+      "class_a": 651,
+      "class_b": 766,
+      "label_a": "microwave",
+      "label_b": "rotisserie",
+      "prob_a": 0.812041163444519,
+      "prob_b": 0.02820676565170288,
+      "rho": {
+        "vanilla": 0.7934212019527377,
+        "deconv": 0.9989015841057676,
+        "guided": 0.999553848150426
+      }
+    },
+    {
+      "image_id": 284282,
+      "truth": "dining table",
+      "class_a": 786,
+      "class_b": 742,
+      "label_a": "sewing machine",
+      "label_b": "printer",
+      "prob_a": 0.2957131564617157,
+      "prob_b": 0.16374965012073517,
+      "rho": {
+        "vanilla": 0.6682658235688489,
+        "deconv": 0.9991860144551462,
+        "guided": 0.9985586754869735
+      }
+    },
+    {
+      "image_id": 284762,
+      "truth": "traffic light",
+      "class_a": 920,
+      "class_b": 707,
+      "label_a": "traffic light",
+      "label_b": "pay-phone",
+      "prob_a": 0.9964905381202698,
+      "prob_b": 0.002155133755877614,
+      "rho": {
+        "vanilla": 0.6408861607812709,
+        "deconv": 0.9990830048820626,
+        "guided": 0.9994233731013129
+      }
+    },
+    {
+      "image_id": 290619,
+      "truth": "banana",
+      "class_a": 632,
+      "class_b": 485,
+      "label_a": "loudspeaker",
+      "label_b": "CD player",
+      "prob_a": 0.3272956907749176,
+      "prob_b": 0.05926969274878502,
+      "rho": {
+        "vanilla": 0.6997301667765005,
+        "deconv": 0.999491547014157,
+        "guided": 0.9995576179971043
+      }
+    },
+    {
+      "image_id": 331569,
+      "truth": "cup",
+      "class_a": 969,
+      "class_b": 949,
+      "label_a": "eggnog",
+      "label_b": "strawberry",
+      "prob_a": 0.697468638420105,
+      "prob_b": 0.1786869615316391,
+      "rho": {
+        "vanilla": 0.5318776817428088,
+        "deconv": 0.9988016038775308,
+        "guided": 0.9958335018383251
+      }
+    },
+    {
+      "image_id": 356498,
+      "truth": "broccoli",
+      "class_a": 924,
+      "class_b": 934,
+      "label_a": "guacamole",
+      "label_b": "hotdog",
+      "prob_a": 0.9121457934379578,
+      "prob_b": 0.03169919550418854,
+      "rho": {
+        "vanilla": 0.7195344846324724,
+        "deconv": 0.9993631913648137,
+        "guided": 0.9971097116583235
+      }
+    },
+    {
+      "image_id": 402783,
+      "truth": "orange",
+      "class_a": 942,
+      "class_b": 950,
+      "label_a": "butternut squash",
+      "label_b": "orange",
+      "prob_a": 0.859923243522644,
+      "prob_b": 0.07185760140419006,
+      "rho": {
+        "vanilla": 0.5366116185763936,
+        "deconv": 0.9993211271076935,
+        "guided": 0.9986703689820972
+      }
+    },
+    {
+      "image_id": 450439,
+      "truth": "kite",
+      "class_a": 701,
+      "class_b": 557,
+      "label_a": "parachute",
+      "label_b": "flagpole",
+      "prob_a": 0.9988805651664734,
+      "prob_b": 0.0010116312187165022,
+      "rho": {
+        "vanilla": 0.6676336450750144,
+        "deconv": 0.9993128412908707,
+        "guided": 0.9997898230200095
+      }
+    },
+    {
+      "image_id": 502732,
+      "truth": "refrigerator",
+      "class_a": 760,
+      "class_b": 742,
+      "label_a": "refrigerator",
+      "label_b": "printer",
+      "prob_a": 0.23801147937774658,
+      "prob_b": 0.19405600428581238,
+      "rho": {
+        "vanilla": 0.5934679260303134,
+        "deconv": 0.9993847927599575,
+        "guided": 0.9984823602092542
+      }
+    }
+  ]
+}

@@ -53,34 +53,74 @@ alinhado aos eixos, nenhuma box cortada). Ver `gradcam/models.py:preprocess`.
 ### Medições das etapas 1–2
 
 `scripts/02_saliency.py`, VGG-16 em CPU, 4 imagens × 2 classes × 3 regras
-(24 passos de backward; 29,4 s no total, incluindo os forwards de seleção):
+(24 passos de backward; ~30 s no total, incluindo os forwards de seleção):
 
-| Métrica | Valor |
-|---|---|
-| Pico do gradiente, vanilla | 5,5·10⁵ – 6,7·10⁶ |
-| Pico do gradiente, deconv | 4,2 – 8,3 |
-| Pico do gradiente, guided | 0,9 – 2,3 |
-| Mediana / pico, vanilla | 5% – 10% |
-| Mediana / pico, deconv | 4,8% – 7,5% |
-| Mediana / pico, guided | 0,5% – 1,5% |
-| `pytest` | 19 passed |
+| Métrica | vanilla | deconv | guided |
+|---|---|---|---|
+| Pico do gradiente | 0,23 – 2,65 | 4,2 – 8,3 | 0,9 – 2,3 |
+| Mediana / pico | 3,5% – 5,3% | 4,8% – 7,2% | 0,5% – 1,5% |
+| Quantil 99% / pico | 0,24 – 0,35 | 0,27 – 0,37 | 0,13 – 0,16 |
 
-Duas consequências registradas no código:
+`pytest`: 30 passed (etapas 1–3).
 
-1. **Escala de exibição ≠ escala de métrica.** Com pico ~10⁶ e mediana ~5% do
-   pico, normalizar pelo máximo (o que `viz.normalize` faz, e continua sendo o
-   padrão semântico) deixa o mapa vanilla quase preto. As figuras usam
-   `viz.scale_for_display(high=0.99, gamma=0.5)` — corte no quantil 99% mais
-   gamma. Nenhuma métrica usa essa escala.
-2. **Cada mapa é normalizado por si.** As três regras diferem por ~6 ordens de
-   grandeza; uma escala compartilhada reduziria deconv e guided a preto.
+Consequências registradas no código:
 
-Achado qualitativo (o mesmo do artigo, Fig. 1): vanilla é ruído de alta
-frequência sem contorno; deconv é ruído com estrutura de grade; guided desenha
-o contorno do objeto. Nos quatro casos (broccoli, parquímetro, laptop, vaso) o
-mapa da classe top-2 — `mashed potato`, `cab`, `pencil box`, `soap dispenser` —
-é visualmente parecido com o da top-1, sobretudo em guided. É a impressão que a
-Fase 3 quantifica com Spearman.
+1. **Escala de exibição ≠ escala de métrica.** A mediana fica em 4% do pico: uma
+   imagem exibida com escala linear até o máximo sai quase toda preta, com a
+   estrutura concentrada numa cauda curta de pixels brilhantes. As figuras usam
+   `viz.scale_for_display(high=0.99, gamma=0.5)` — branco no quantil 99%, mais
+   gamma. Nenhuma métrica usa essa escala (e Spearman nem se abala: é invariante
+   a transformação monótona).
+2. **Cada mapa é normalizado por si.** Os picos diferem por ~20× entre vanilla
+   (~0,3) e deconv (~6); uma escala compartilhada apagaria dois dos três painéis.
+
+> Correção de uma medição anterior: até a Fase 3, `vanilla` estava implementado
+> como "gradiente passa sempre pelo ReLU". Isso não é o gradiente da rede e
+> inflava o pico para 10⁵–10⁶, com mapas densos e sem contorno. Depois da
+> correção (`x > 0`), o pico fica em 0,23–2,65 e o mapa mostra o blob suave
+> sobre o objeto que caracteriza a saliência de Simonyan et al.
+
+Achado qualitativo (o mesmo do artigo, Fig. 1): vanilla é ruído fino com um
+blob difuso sobre o objeto; deconv é ruído com estrutura de grade; guided
+desenha o contorno do objeto. Nos quatro casos (broccoli, parquímetro, laptop,
+vaso) o mapa da classe top-2 — `mashed potato`, `cab`, `pencil box`, `soap
+dispenser` — é visualmente parecido com o da top-1, sobretudo em guided. É a
+impressão que a Fase 3 quantifica logo abaixo.
+
+### Medições da etapa 3
+
+`scripts/03_class_discrimination.py`, 16 imagens (uma por categoria verbatim;
+2 das 18 não têm imagem de objeto único com lado ≥ 80), pareamento top-1 vs
+top-2, semente 0. Métrica: `spearman(map_A, map_B)`, com o mapa
+`max|∂y^c/∂x|` por pixel.
+
+| Método | média | mediana | desvio | n |
+|---|---|---|---|---|
+| vanilla | **0,642** | 0,650 | 0,090 | 16 |
+| deconv | **0,999** | 0,999 | 0,000 | 16 |
+| guided | **0,999** | 0,999 | 0,001 | 16 |
+
+Controles rodados à parte, para o número não ser artefato de métrica degenerada:
+
+| Par | vanilla | deconv | guided |
+|---|---|---|---|
+| mesma imagem, classes top-1 vs top-2 | 0,52 | 0,999 | 0,999 |
+| imagens diferentes, mesma classe predita | +0,05 | +0,22 | −0,01 |
+
+Ou seja: a métrica **discrimina** pares de imagens (rho ≈ 0) e colapsa em pares
+de classe (rho ≈ 1). Não é o caso de "todo par dá 1".
+
+Leitura correta do 0,999: em deconv/guided a *ordenação* dos pixels é quase a
+mesma entre as duas classes — o mapa localiza o objeto, não a classe. Não quer
+dizer que os mapas sejam idênticos: 100% dos pixels diferem em valor; o que
+coincide é o suporte/ordem. Vanilla, por usar o gradiente comum (com a máscara
+`x > 0`), ainda diferencia mais as classes — mas 0,64 continua longe de
+discriminar.
+
+O resultado é o do paper (Fig. 2: "gato" e "cachorro" quase iguais em GB), e é
+o motivador direto do Grad-CAM. O JSON (`results/metrics/class_discrimination.json`)
+é o contrato consumido por `notebooks/02_relus.ipynb`.
+
 
 ### Restrição descoberta: COCO × ImageNet
 
@@ -158,9 +198,15 @@ volta pelo ReLU:
 
 | Método | `grad_out` passa se… |
 |---|---|
-| Vanilla (Simonyan 2013) | sempre |
+| Vanilla (Simonyan 2013) | `x > 0` — é o gradiente comum do ReLU |
 | Deconvolution (Zeiler 2014) | `grad_out > 0` |
 | Guided Backprop (Springenberg 2014) | `grad_out > 0` **e** `x > 0` |
+
+`vanilla` **não** é "deixa passar sempre". Deixar passar tudo produz o gradiente
+de uma rede com os ReLUs linearizados na volta: outro objeto, com mapas densos e
+picos ~10⁶ em vez de ~10⁰. Essa era a definição da primeira versão; o teste
+`test_vanilla_matches_autograd` (compara com `torch.autograd` puro) fixa a
+correta e pegaria a regressão.
 
 Implementado via `torch.autograd.Function` (e não `register_full_backward_hook`, que
 tem restrições documentadas e é mais lento):
@@ -207,7 +253,7 @@ MapFn = Callable[[nn.Module, torch.Tensor, int], torch.Tensor]   # (modelo, entr
 ### 2.5 Tratamento de imagens
 
 - Normalização ImageNet **antes** do forward; desnormalização **só** para exibir.
-- Escala de exibição: `viz.scale_for_display(high=0.99, gamma=0.5)` (corte no
+- Escala de exibição: `viz.scale_for_display(high=0.99, gamma=0.5)` (branco no
   quantil 99% + gamma). Nunca em métrica — ver as medições das etapas 1–2 na
   seção 0.
 - `model.eval()` sempre: BatchNorm em modo `train` produz mapas inúteis.
@@ -222,7 +268,7 @@ MapFn = Callable[[nn.Module, torch.Tensor, int], torch.Tensor]   # (modelo, entr
 | **0** | `requirements.txt`, env instalado, VGG-16 + COCO val2017 baixados, `data.py` lendo boxes | `01_forward_sanity.py` acerta top-1 em 3 imagens |
 | **1** | Saliency vanilla `∂y^c/∂x` no VGG-16 | mapas com aspecto de contorno ruidoso; 4 imagens × 2 classes |
 | **2** | Deconv e Guided Backprop (mesma conta, outra máscara) | 3 mapas lado a lado da mesma imagem/classe |
-| **3** | **Não-discriminação de classe**: `Spearman(map_cat, map_dog)` na mesma imagem | GB alto (≈0,9), mostrando quantitativamente o problema que o paper resolve |
+| **3** | **Não-discriminação de classe**: `Spearman(map_cat, map_dog)` na mesma imagem | GB alto, mostrando quantitativamente o problema que o paper resolve — **medido: 0,999 em deconv/guided, 0,642 em vanilla** |
 | **4** | Grad-CAM (Eqs. 1–2) | mapa de "cat" no gato e de "dog" no cachorro, na mesma foto |
 | **5** | CAM em ResNet18 (`conv → GAP → fc`) e equivalência numérica com Grad-CAM | Spearman > 0,9 na mesma camada; valida a prova da §3.1 |
 | **6** | Guided Grad-CAM = Fase 4 ⊙ Fase 2 | detalhe fino (listras) sem perder discriminação de classe |

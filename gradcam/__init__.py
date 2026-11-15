@@ -16,6 +16,14 @@ from .models import (
     predict,
     preprocess,
 )
+from .metrics import (
+    MapFn,
+    class_discrimination,
+    saliency_map_fn,
+    saliency_map_fns,
+    spearman,
+    summarize,
+)
 from .relu_variants import MODES, ReluVariant, set_relu_mode
 from .saliency import guided_backprop, input_gradient, saliency, saliency_map
 
@@ -25,7 +33,9 @@ __all__ = [
     "MODES",
     "STD",
     "WEIGHTS_DIR",
+    "MapFn",
     "ReluVariant",
+    "class_discrimination",
     "denormalize",
     "disable_inplace_relu",
     "guided_backprop",
@@ -36,5 +46,9 @@ __all__ = [
     "preprocess",
     "saliency",
     "saliency_map",
+    "saliency_map_fn",
+    "saliency_map_fns",
     "set_relu_mode",
+    "spearman",
+    "summarize",
 ]

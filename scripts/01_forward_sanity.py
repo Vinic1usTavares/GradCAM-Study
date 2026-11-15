@@ -51,10 +51,9 @@ def main() -> int:
     print(f"modelo: {args.model} | {n_params / 1e6:.1f}M parametros")
 
     labels = imagenet_labels()
-    label_set = set(labels)
 
     coco = CocoVal()
-    verbatim = sorted({n for n in coco.categories.values() if n in label_set})
+    verbatim = coco.verbatim_categories(labels)
     ids = coco.stratified_subset(args.per_category, seed=0, categories=verbatim)
     print(f"COCO val2017: {len(coco)} imagens | avaliando {len(ids)} "
           f"em {len(verbatim)} categorias")
