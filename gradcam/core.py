@@ -21,7 +21,7 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
-from .relu_variants import ReluVariant
+from .relu_variants import ReluVariant, relu_mode
 
 # Camadas nomeadas do VGG-16 para a ablacao da Fase 9. Os indices sao do
 # `features` do torchvision: ReLU logo apos a conv correspondente.
@@ -65,6 +65,34 @@ def resolve_layer(model: nn.Module, layer: nn.Module | str | None = None) -> nn.
     )
 
 
+def _qualified_name(model: nn.Module, module: nn.Module) -> str | None:
+    """Nome de `module` dentro de `model`, ou `None` se ele nao for do modelo.
+
+    `nn.Module` nao sobrescreve `__eq__`, entao a comparacao e' de identidade.
+    """
+    for name, candidate in model.named_modules():
+        if candidate is module:
+            return name
+    return None
+
+
+def _name_for_layer(
+    model: nn.Module, layer: nn.Module | str | None
+) -> nn.Module | str | None:
+    """Troca um modulo por seu nome **antes** da substituicao dos ReLUs.
+
+    `relu_mode` troca os `nn.ReLU` por `ReluVariant`; um modulo recebido
+    explicitamente (tipicamente `model[3]`, um ReLU) deixaria de estar no grafo
+    e o forward hook nunca dispararia. Nome continua valido depois da troca, e
+    `resolve_layer` ja' aceita nome, modulo ou `None`. Modulo que nao pertence
+    ao modelo fica como esta (pode ser um wrapper externo).
+    """
+    if not isinstance(layer, nn.Module):
+        return layer
+    name = _qualified_name(model, layer)
+    return layer if name in (None, "") else name
+
+
 def _forward_with_activations(
     model: nn.Module, x: torch.Tensor, layer: nn.Module
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -90,6 +118,7 @@ def gradcam(
     class_idx: int | None = None,
     layer: nn.Module | str | None = None,
     apply_relu: bool = True,
+    mode: str = "vanilla",
 ) -> tuple[torch.Tensor, int]:
     """Mapa Grad-CAM de uma imagem e uma classe.
 
@@ -99,21 +128,29 @@ def gradcam(
 
     `apply_relu=False` desliga o ReLU de (2) e existe para a ablacao
     "sem ReLU" da Tabela 3 do artigo — nao e' o metodo.
+
+    `mode` escolhe a regra de backward pelo ReLU (`vanilla` | `deconv` |
+    `guided`). A regra vale so' durante a chamada: sem isso, o resultado
+    dependia de qual saliencia tinha rodado antes no mesmo modelo (rho 0,874
+    recem-carregado, 0,992 apos `guided`, 0,296 apos `deconv` na imagem 15278).
     """
     if x.ndim != 4 or x.shape[0] != 1:
         raise ValueError(f"esperava (1, C, H, W); recebi {tuple(x.shape)}")
 
-    target = resolve_layer(model, layer)
     x = x.detach().clone().requires_grad_(True)
+    layer = _name_for_layer(model, layer)
 
-    scores, activations = _forward_with_activations(model, x, target)
-    if class_idx is None:
-        class_idx = int(scores.argmax(dim=1).item())
+    with relu_mode(model, mode):
+        target = resolve_layer(model, layer)
+        scores, activations = _forward_with_activations(model, x, target)
+        if class_idx is None:
+            class_idx = int(scores.argmax(dim=1).item())
 
-    (grad,) = torch.autograd.grad(scores[0, class_idx], activations)
+        (grad,) = torch.autograd.grad(scores[0, class_idx], activations)
 
-    # (1): alpha_k = media espacial do gradiente da ativacao k.
-    alpha = grad.mean(dim=(2, 3), keepdim=True)
-    # (2): combinacao linear das ativacoes com os pesos alpha.
-    weighted = (alpha * activations).sum(dim=1)[0]
+        # (1): alpha_k = media espacial do gradiente da ativacao k.
+        alpha = grad.mean(dim=(2, 3), keepdim=True)
+        # (2): combinacao linear das ativacoes com os pesos alpha.
+        weighted = (alpha * activations).sum(dim=1)[0]
+
     return (weighted.clamp(min=0) if apply_relu else weighted), class_idx

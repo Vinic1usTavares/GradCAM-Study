@@ -26,7 +26,7 @@ from .models import (
     predict,
     preprocess,
 )
-from .relu_variants import MODES, ReluVariant, set_relu_mode
+from .relu_variants import MODES, ReluVariant, relu_mode, set_relu_mode
 from .saliency import guided_backprop, input_gradient, saliency, saliency_map
 
 __all__ = [
@@ -49,6 +49,7 @@ __all__ = [
     "load_model",
     "predict",
     "preprocess",
+    "relu_mode",
     "resolve_layer",
     "saliency",
     "saliency_map",

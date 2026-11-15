@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import sys
 from pathlib import Path
 
@@ -12,6 +13,8 @@ import torch.nn as nn
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from gradcam.core import VGG16_LAYERS, gradcam, resolve_layer
+from gradcam.relu_variants import ReluVariant, set_relu_mode
+from gradcam.saliency import saliency
 
 
 def tiny_model() -> nn.Sequential:
@@ -50,6 +53,89 @@ def test_vgg16_layer_names_point_at_conv_outputs():
         "conv4_3": "features.22",
         "conv5_3": "features.29",
     }
+
+
+def reference_map(
+    model: nn.Module, x: torch.Tensor, class_idx: int, mode: str, layer: str
+) -> torch.Tensor:
+    """Eqs. (1)-(2) com a regra instalada fora do `gradcam`, como referencia.
+
+    Usa uma copia do modelo porque `set_relu_mode` altera no lugar.
+    """
+    twin = copy.deepcopy(model)
+    set_relu_mode(twin, mode)
+    target = dict(twin.named_modules())[layer]
+
+    captured: list[torch.Tensor] = []
+    handle = target.register_forward_hook(
+        lambda _module, _inputs, output: captured.append(output)
+    )
+    try:
+        scores = twin(x.clone().requires_grad_(True))
+    finally:
+        handle.remove()
+
+    (grad,) = torch.autograd.grad(scores[0, class_idx], captured[0])
+    alpha = grad.mean(dim=(2, 3), keepdim=True)
+    return (alpha * captured[0]).sum(dim=1)[0].clamp(min=0)
+
+
+def test_gradcam_mode_matches_the_rule_installed_explicitly():
+    """`mode` tem de reproduzir o resultado do `set_relu_mode` manual."""
+    model = tiny_model()
+    x = torch.randn(1, 3, 8, 8)
+
+    expected = reference_map(model, x, class_idx=2, mode="guided", layer="3")
+    heatmap, _ = gradcam(model, x, class_idx=2, mode="guided")
+
+    assert torch.allclose(heatmap, expected, atol=1e-6)
+
+
+def test_gradcam_accepts_explicit_relu_module_under_guided():
+    """`layer=model[3]` e' um `nn.ReLU` — ele e' substituido durante o bloco."""
+    model = tiny_model()
+    x = torch.randn(1, 3, 8, 8)
+
+    expected = reference_map(model, x, class_idx=2, mode="guided", layer="3")
+    heatmap, _ = gradcam(model, x, class_idx=2, layer=model[3], mode="guided")
+
+    assert torch.allclose(heatmap, expected, atol=1e-6)
+
+
+def test_gradcam_restores_the_original_relu_modules():
+    model = tiny_model()
+    relus = (model[1], model[3])
+
+    gradcam(model, torch.randn(1, 3, 8, 8), class_idx=0, mode="guided")
+
+    assert model[1] is relus[0]
+    assert model[3] is relus[1]
+    assert not any(isinstance(module, ReluVariant) for module in model.modules())
+
+
+def test_gradcam_is_independent_of_previous_saliency():
+    """Regressao medida: 0,874 recem-carregado, 0,992 apos guided, 0,296 apos
+    deconv — a mesma chamada de `gradcam` mudava de resultado."""
+    model = tiny_model()
+    x = torch.randn(1, 3, 8, 8)
+
+    first, _ = gradcam(model, x, class_idx=2)
+    saliency(model, x, class_idx=2, mode="deconv")
+    saliency(model, x, class_idx=2, mode="guided")
+    again, _ = gradcam(model, x, class_idx=2)
+
+    assert torch.equal(first, again)
+
+
+def test_gradcam_restores_modules_when_layer_is_invalid():
+    model = tiny_model()
+    relu = model[3]
+
+    with pytest.raises(KeyError):
+        gradcam(model, torch.randn(1, 3, 8, 8), class_idx=0,
+                layer="features.99", mode="guided")
+
+    assert model[3] is relu
 
 
 def test_gradcam_shape_matches_feature_map():

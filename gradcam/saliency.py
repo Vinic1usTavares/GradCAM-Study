@@ -2,8 +2,9 @@
 
     saliency(x) = max_k | d y^c / d x_k |        (Simonyan et al., 2013)
 
-Com `set_relu_mode(model, "guided")` o mesmo codigo produz Guided Backprop;
-com `"deconv"`, Deconvolution. Nada mais muda.
+Com `mode="guided"` o mesmo codigo produz Guided Backprop; com `"deconv"`,
+Deconvolution. Nada mais muda. A regra e' aplicada por `relu_mode`, que a
+remove ao fim da chamada: nenhum metodo herda a mascara do anterior.
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
-from .relu_variants import MODES, set_relu_mode
+from .relu_variants import MODES, relu_mode
 
 
 def input_gradient(
@@ -53,11 +54,15 @@ def saliency(
     class_idx: int | None = None,
     mode: str = "vanilla",
 ) -> tuple[torch.Tensor, int]:
-    """Saliencia em uma chamada: configura a regra de ReLU e calcula o mapa."""
+    """Saliencia em uma chamada: aplica a regra de ReLU e calcula o mapa.
+
+    A regra vale so' durante a chamada (`relu_mode`); o modelo volta ao estado
+    anterior mesmo se o backward falhar.
+    """
     if mode not in MODES:
         raise ValueError(f"modo invalido: {mode!r}; use um de {MODES}")
-    set_relu_mode(model, mode)
-    grad, class_idx = input_gradient(model, x, class_idx)
+    with relu_mode(model, mode):
+        grad, class_idx = input_gradient(model, x, class_idx)
     return saliency_map(grad), class_idx
 
 

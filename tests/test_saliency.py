@@ -11,7 +11,7 @@ import torch.nn as nn
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from gradcam.relu_variants import MODES, ReluVariant, set_relu_mode
+from gradcam.relu_variants import MODES, ReluVariant, relu_mode, set_relu_mode
 from gradcam.saliency import saliency
 
 # Entrada com sinais mistos: posicoes 0 e 2 negativas, 1 e 3 positivas.
@@ -118,6 +118,73 @@ def test_set_relu_mode_preserves_weights_and_output():
     assert list(model.state_dict()) == keys
     with torch.no_grad():
         assert torch.allclose(model(x), before)
+
+
+def test_relu_mode_restores_the_original_module():
+    """A regra vale so' no bloco: o `nn.ReLU` original volta, mesmo objeto."""
+    model = nn.Sequential(nn.Linear(4, 4), nn.ReLU(), nn.Linear(4, 2))
+    original = model[1]
+
+    with relu_mode(model, "guided"):
+        assert isinstance(model[1], ReluVariant)
+        assert model[1].mode == "guided"
+
+    assert model[1] is original
+    assert not isinstance(model[1], ReluVariant)
+
+
+def test_relu_mode_restores_on_exception():
+    model = nn.Sequential(nn.Linear(4, 4), nn.ReLU(), nn.Linear(4, 2))
+    original = model[1]
+
+    with pytest.raises(RuntimeError, match="falhou no meio"):
+        with relu_mode(model, "deconv"):
+            raise RuntimeError("falhou no meio")
+
+    assert model[1] is original
+
+
+def test_relu_mode_restores_the_previous_variant_mode():
+    """Um `ReluVariant` que ja' existia mantem a identidade; so' o modo muda."""
+    model = TinyModel("deconv")
+
+    with relu_mode(model, "guided"):
+        assert model.relu.mode == "guided"
+
+    assert model.relu.mode == "deconv"
+
+
+def test_relu_mode_rejects_unknown_mode():
+    with pytest.raises(ValueError):
+        with relu_mode(TinyModel(), "nope"):
+            pass
+
+
+def test_saliency_leaves_no_rule_behind():
+    model = nn.Sequential(nn.Conv2d(3, 4, 3, padding=1), nn.ReLU(),
+                          nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Linear(4, 5))
+    original = model[1]
+
+    saliency(model, torch.randn(1, 3, 8, 8), mode="guided")
+
+    assert model[1] is original
+    assert isinstance(model[1], nn.ReLU)
+    assert not isinstance(model[1], ReluVariant)
+
+
+def test_saliency_is_independent_of_previous_calls():
+    """Regressao: `guided` deixava a mascara instalada para a proxima chamada."""
+    model = nn.Sequential(nn.Conv2d(3, 4, 3, padding=1), nn.ReLU(),
+                          nn.Conv2d(4, 2, 3, padding=1), nn.ReLU(),
+                          nn.Flatten(), nn.Linear(2 * 8 * 8, 5))
+    x = torch.randn(1, 3, 8, 8)
+
+    vanilla, _ = saliency(model, x, 3, mode="vanilla")
+    saliency(model, x, 3, mode="deconv")
+    saliency(model, x, 3, mode="guided")
+    again, _ = saliency(model, x, 3, mode="vanilla")
+
+    assert torch.equal(vanilla, again)
 
 
 def test_saliency_map_is_non_negative_and_input_sized():
