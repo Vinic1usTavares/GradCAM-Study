@@ -163,6 +163,35 @@ duas texturas parecidas, e o rho de 0,874/0,649 diz exatamente isso. Onde separa
 a mudança é grosseira. É o mesmo defeito que o §4 do paper admite ao comparar com
 localização fraca, e o que a Fase 8 vai medir de forma comparável.
 
+#### A figura que cumpre o critério: dois objetos, duas classes
+
+O pareamento top-1/top-2 acima não testa discriminação de verdade: numa foto de
+**um** objeto, o top-2 é quase sempre sinônimo do objeto dominante. Medido em 26
+imagens do val2017 com exatamente dois objetos (lado ≥ 150 px em ambos, centros a
+≥ 35% da diagonal): em **23 das 26** os dois mapas acendem o mesmo objeto
+(`Boston bull`/`French bulldog`, `notebook`/`laptop`, `washbasin`/`toilet seat`).
+É o comportamento correto do top-2 — e a razão de a figura precisar de classes
+explícitas.
+
+`scripts/04_gradcam.py --images 95786 --classes cup,vase` fixa uma classe por
+objeto (as duas são classes ImageNet verbatim, `cup` 968 e `vase` 883):
+
+| Classe | prob | pico | mapa |
+|---|---|---|---|
+| `cup` | 21,8% | caixa do copo | copo (canto inferior direito) |
+| `vase` | 1,3% | caixa do vaso | vaso (cilindro central) |
+| — | — | `Spearman` | **0,467** |
+
+Os picos caem em objetos diferentes, e o `Spearman` entre os dois mapas fica em
+0,467 — contra 0,999 de `deconv`/`guided` e 0,760 do pareamento top-1/top-2 da
+mesma figura. É a evidência do critério de aceite. O número 0,467 é de
+pareamento customizado (n=1) e não entra em nenhuma média do repositório.
+
+Dois casos descartados na busca, que valem registro: `176446` (livro + laptop)
+acerta o objeto de cada classe, mas com probabilidades 0,8% e 0,3% os dois mapas
+se sobrepõem; `431140` (pia + vaso sanitário) tem rótulos bons (38,6% / 31,7%),
+mas os dois mapas caem na pia (rho 0,78).
+
 Controles de implementação cobertos por teste (`tests/test_core.py`, 8 testes):
 
 1. **Hook removido**: `test_gradcam_removes_its_hook` garante que a captura de
@@ -328,7 +357,7 @@ MapFn = Callable[[nn.Module, torch.Tensor, int], torch.Tensor]   # (modelo, entr
 | **1** | Saliency vanilla `∂y^c/∂x` no VGG-16 | mapas com aspecto de contorno ruidoso; 4 imagens × 2 classes |
 | **2** | Deconv e Guided Backprop (mesma conta, outra máscara) | 3 mapas lado a lado da mesma imagem/classe |
 | **3** | **Não-discriminação de classe**: `Spearman(map_cat, map_dog)` na mesma imagem | GB alto, mostrando quantitativamente o problema que o paper resolve — **medido: 0,999 em deconv/guided, 0,642 em vanilla** |
-| **4** | Grad-CAM (Eqs. 1–2) | mapa de "cat" no gato e de "dog" no cachorro, na mesma foto — **proxy medido: Spearman(A,B) = 0,760 contra 0,999 de deconv/guided na Fase 3**; controle entre imagens +0,009–0,211 |
+| **4** | Grad-CAM (Eqs. 1–2) | mapa de "cat" no gato e de "dog" no cachorro, na mesma foto — **cumprido em `95786` com `--classes cup,vase`: `cup` acende o copo, `vase` acende o vaso, Spearman 0,467**. Proxy no pareamento top-1/top-2: 0,760 contra 0,999 de deconv/guided; controle entre imagens +0,009–0,211 |
 | **5** | CAM em ResNet18 (`conv → GAP → fc`) e equivalência numérica com Grad-CAM | Spearman > 0,9 na mesma camada; valida a prova da §3.1 |
 | **6** | Guided Grad-CAM = Fase 4 ⊙ Fase 2 | detalhe fino (listras) sem perder discriminação de classe |
 | **7** | Counterfactual (negar o gradiente em (1)) | mapa desloca para a evidência contrária |

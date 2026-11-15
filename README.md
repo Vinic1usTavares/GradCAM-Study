@@ -82,6 +82,9 @@ Figuras das Fases 1–4 em `results/figures/`; métricas em `results/metrics/`
 .\.venv\Scripts\python.exe scripts\02_saliency.py              # ~30 s em CPU
 .\.venv\Scripts\python.exe scripts\03_class_discrimination.py  # ~75 s em CPU
 .\.venv\Scripts\python.exe scripts\04_gradcam.py               # ~18 s em CPU
+
+# figura de dois objetos: uma classe por objeto (5 s)
+.\.venv\Scripts\python.exe scripts\04_gradcam.py --images 95786 --classes cup,vase
 ```
 
 O resultado é o do artigo: as três regras produzem estéticas distintas na mesma
@@ -105,6 +108,14 @@ muda a ordenação antes de qualquer diferença de método. O que dá para afirm
 com os dados: os 8 mapas têm o pico dentro da box de ground truth, e o pico só se
 desloca entre as duas classes em 2 das 4 imagens. Discriminação de classe em si
 é a Fase 8 (pointing game *cued*), onde a resolução não entra na conta.
+
+O critério do plano — "mapa de gato no gato e de cachorro no cachorro, na mesma
+foto" — só se cumpre com **dois objetos**, e o top-2 do modelo não serve para
+isso: em 23 das 26 imagens do val2017 com dois objetos grandes e separados,
+top-1 e top-2 são sinônimos do objeto dominante. Com as classes fixadas uma por
+objeto (`04_gradcam_vgg16_95786_cup-vase.png`), o mapa de `cup` acende o copo e
+o de `vase` acende o vaso, com `Spearman` 0,467 entre os dois — a discriminação
+que o `deconv`/`guided` não tem (0,999) e que o Grad-CAM passa a ter.
 
 
 ## Reprodutibilidade

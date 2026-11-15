@@ -110,7 +110,7 @@ Tempos conforme §6. Soma 29 min + 3 min de folga = 32 min.
 | `01_saliency` | 2 · 3 min | "e se eu derivar a saída em relação à imagem?" | `grad` cru (3×224×224) → um canal → `max\|·\|`; **escala de exibição** (quantil 99% + gamma); 1 imagem × 2 classes, cinza | 4 s | Fase 1 ✅ |
 | `02_relus` | 3 · 4 min | "por que Deconv e Guided parecem melhores?" | 1 célula com as 3 linhas de máscara (o slide **é** o código); 3 mapas lado a lado; picos (~0,3 / ~6 / ~2); **punchline:** Spearman(classe A, classe B) = 0,999 em deconv/guided vs 0,642 em vanilla, em barras | 5 s | Fase 2 ✅ / Fase 3 ✅ |
 | `03_cam` | 4 · 2 min | "CAM: e se eu tirar o FC?" | cirurgia no ResNet18 `conv → GAP → fc`; CAM via hook; custo de 2,98% top-1 | 1 s | Fase 5 |
-| `04_gradcam` | 5 · 4 min | "como obter CAM sem trocar a arquitetura?" | **derivação em 8 células**: hook em `A` → `y^c` → one-hot → `α=GAP(∂y/∂A)` → `ΣαA` → `ReLU` → upsample → overlay; célula-espelho `gradcam(model, x, c)`; fecha com `Spearman(A,B)` calculado na célula (0,760 medido pelo script, contra 0,999 de deconv/guided) | 3 s | Fase 4 ✅ |
+| `04_gradcam` | 5 · 4 min | "como obter CAM sem trocar a arquitetura?" | **derivação em 8 células**: hook em `A` → `y^c` → one-hot → `α=GAP(∂y/∂A)` → `ΣαA` → `ReLU` → upsample → overlay; célula-espelho `gradcam(model, x, c)`; **fecha com a figura de dois objetos** (`95786`, `cup`/`vase`, rho 0,467) calculada na célula — a discriminação que deconv/guided não tem | 3 s | Fase 4 ✅ |
 | `05_equivalencia` | 6 · 3 min | "Grad-CAM é mesmo um CAM generalizado?" | `w_k = Z·α_k`; scatter CAM × Grad-CAM na mesma camada; Spearman > 0,9 | 1 s | Fase 5 |
 | `06_guided` | 7 · 2 min | "dá para ter resolução **e** discriminação?" | `Grad-CAM ⊙ GB`; zoom nas listras da zebra; comparar resolução (224) com classe | 3 s | Fase 6 |
 | `07_counterfactual` | bônus · 1 min | "e a evidência *contra*?" | negar `α` em (1); mapa migra para o objeto vizinho | 3 s | Fase 7 |
@@ -149,11 +149,18 @@ vanilla, n=16), então a punchline deixou de ser pergunta em aberto.
 equação do paper no markdown acima. A nona célula é a chamada de biblioteca que
 produz exatamente o mesmo mapa — fecha o argumento "isto é implementável".
 
-O único número da fase (`Spearman(A,B)`) é calculado na célula, não lido de JSON:
-são dois backwards (~2 s) e vale mais ao vivo. A resolução do mapa (14×14) entra
-como nota obrigatória — comparar esse Spearman com o 0,999 de `deconv`/`guided`
-compara mapas 14×14 contra 224×224, e o número do Grad-CAM fica **acima** do
-0,642 do vanilla por esse motivo de escala, não por ser menos discriminativo.
+O fecho é a figura de dois objetos, não a de quatro imagens: com
+`--images 95786 --classes cup,vase` o mapa de cada classe acende o seu objeto
+(`rho 0,467`), e é a única figura do repositório que cumpre o critério do paper
+("gato no gato, cachorro no cachorro, na mesma foto"). Custa 4 s, então roda ao
+vivo. A resolução (14×14) continua como nota obrigatória: comparar esse
+Spearman com o 0,999 de `deconv`/`guided` compara mapas 14×14 contra 224×224.
+
+A antiga figura de 4 imagens fica como contraponto: top-1/top-2 numa foto de um
+objeto só acende o mesmo lugar duas vezes em 2 das 4 imagens, porque o top-2 é
+sinônimo do objeto dominante (medido: 23 de 26 imagens com dois objetos). É a
+célula que explica *por que* é preciso escolher uma classe por objeto.
+
 A ablacao ReLU on/off sai daqui: a figura do script mostrou que ela quase não
 muda a imagem exibida (a escala de exibição corta os negativos); ela é medida por
 localização na Fase 9 e volta no `08_numeros`.
@@ -326,4 +333,5 @@ Nesta ordem:
 | 2026-11-15 | `6f3902e` | pós-pull (Fases 1–2): `deck.grid` passa a delegar a `viz.figure_grid`; escala de exibição vira decisão fixa (item 7 da §0); runtimes recalibrados com backward medido em 1,1 s; `01`/`02` promovidos para "agora"; critério de tamanho do `.ipynb` corrigido para 4 MB com dpi 110 |
 | 2026-11-15 | `9b55397` | pós-Fase 3: corrige a magnitude de `vanilla` (a regra estava "passa sempre"; agora `x > 0`, pico ~0,3 em vez de 10⁵–10⁶) e preenche a punchline de `02_relus` com `class_discrimination.json` (0,999 / 0,642, n=16) |
 | 2026-11-15 | `3d7b30b` | pós-Fase 4: `04_gradcam` liberado (script + figura prontos, mapa 14×14, rho 0,760); ablacao ReLU sai do notebook e vai para a Fase 9 (a figura quase não muda com a escala de exibição); `Spearman` calculado em célula em vez de JSON novo |
+| 2026-11-15 | `140087a` | `--images`/`--classes` permitem fixar imagem e classes; `04_gradcam` passa a fechar com a figura de dois objetos (`95786`, `cup`/`vase`, rho 0,467), que é a que cumpre o critério de aceite. A figura de 4 imagens vira contraponto (top-2 = sinônimo do objeto dominante em 23 de 26 casos) |
 
