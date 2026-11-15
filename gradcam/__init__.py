@@ -1,6 +1,7 @@
 """Grad-CAM reimplementado do zero.
 
-Fases 0-2 por enquanto: carregamento de modelos e utilidades de imagem.
+Fases 0-2 por enquanto: carregamento de modelos, utilitarios de imagem e
+saliencia por gradiente (vanilla | deconv | guided).
 """
 
 from .models import (
@@ -15,16 +16,25 @@ from .models import (
     predict,
     preprocess,
 )
+from .relu_variants import MODES, ReluVariant, set_relu_mode
+from .saliency import guided_backprop, input_gradient, saliency, saliency_map
 
 __all__ = [
     "COCO_DIR",
     "MEAN",
+    "MODES",
     "STD",
     "WEIGHTS_DIR",
+    "ReluVariant",
     "denormalize",
     "disable_inplace_relu",
+    "guided_backprop",
     "imagenet_labels",
+    "input_gradient",
     "load_model",
     "predict",
     "preprocess",
+    "saliency",
+    "saliency_map",
+    "set_relu_mode",
 ]

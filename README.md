@@ -64,8 +64,8 @@ scripts/           um executável por experimento
 | Etapa | Estado |
 |---|---|
 | 0. Ambiente, downloads, sanity check | **concluída** — top-1 63%, pytest 7/7 |
-| 1. Saliency de gradiente | pendente |
-| 2. Deconv / Guided Backprop | pendente |
+| 1. Saliency de gradiente | **concluída** — `02_saliency.py`, 4 imagens × 2 classes |
+| 2. Deconv / Guided Backprop | **concluída** — 3 mapas lado a lado, pytest 19/19 |
 | 3. Teste de não-discriminação de classe | pendente |
 | 4. Grad-CAM | pendente |
 | 5. CAM vs Grad-CAM (§3.1) | pendente |
@@ -74,6 +74,19 @@ scripts/           um executável por experimento
 | 8. Pointing game + oclusão | pendente |
 | 9. Ablações | pendente |
 | 10. Sanity checks (Adebayo) | pendente |
+
+Figuras das Fases 1–2 em `results/figures/` (`--overlay` troca cinza por jet):
+
+```powershell
+.\.venv\Scripts\python.exe scripts\02_saliency.py            # ~30 s em CPU
+```
+
+O resultado é o do artigo: as três regras produzem estéticas distintas na mesma
+imagem e classe — `vanilla` é ruído de alta frequência sem contorno,
+`deconv` é ruído com estrutura de grade, `guided` desenha o contorno do objeto
+(vaso, laptop, parquímetros). A diferença de magnitude é de ~6 ordens: pico de
+`|∂y/∂x|` ≈ 10⁵–10⁶ em `vanilla`, ≈ 4–8 em `deconv` e ≈ 1–2 em `guided`.
+Isso é o que torna inevitável normalizar cada mapa por conta própria.
 
 ## Reprodutibilidade
 

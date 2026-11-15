@@ -50,6 +50,38 @@ justifica o downgrade. Se a Fase 8/10 crescer, o comando é:
 ficou o resize direto porque preserva a geometria das boxes do COCO (afim
 alinhado aos eixos, nenhuma box cortada). Ver `gradcam/models.py:preprocess`.
 
+### Medições das etapas 1–2
+
+`scripts/02_saliency.py`, VGG-16 em CPU, 4 imagens × 2 classes × 3 regras
+(24 passos de backward; 29,4 s no total, incluindo os forwards de seleção):
+
+| Métrica | Valor |
+|---|---|
+| Pico do gradiente, vanilla | 5,5·10⁵ – 6,7·10⁶ |
+| Pico do gradiente, deconv | 4,2 – 8,3 |
+| Pico do gradiente, guided | 0,9 – 2,3 |
+| Mediana / pico, vanilla | 5% – 10% |
+| Mediana / pico, deconv | 4,8% – 7,5% |
+| Mediana / pico, guided | 0,5% – 1,5% |
+| `pytest` | 19 passed |
+
+Duas consequências registradas no código:
+
+1. **Escala de exibição ≠ escala de métrica.** Com pico ~10⁶ e mediana ~5% do
+   pico, normalizar pelo máximo (o que `viz.normalize` faz, e continua sendo o
+   padrão semântico) deixa o mapa vanilla quase preto. As figuras usam
+   `viz.scale_for_display(high=0.99, gamma=0.5)` — corte no quantil 99% mais
+   gamma. Nenhuma métrica usa essa escala.
+2. **Cada mapa é normalizado por si.** As três regras diferem por ~6 ordens de
+   grandeza; uma escala compartilhada reduziria deconv e guided a preto.
+
+Achado qualitativo (o mesmo do artigo, Fig. 1): vanilla é ruído de alta
+frequência sem contorno; deconv é ruído com estrutura de grade; guided desenha
+o contorno do objeto. Nos quatro casos (broccoli, parquímetro, laptop, vaso) o
+mapa da classe top-2 — `mashed potato`, `cab`, `pencil box`, `soap dispenser` —
+é visualmente parecido com o da top-1, sobretudo em guided. É a impressão que a
+Fase 3 quantifica com Spearman.
+
 ### Restrição descoberta: COCO × ImageNet
 
 Apenas **18** das 80 categorias do COCO são classes ImageNet verbatim
@@ -175,6 +207,9 @@ MapFn = Callable[[nn.Module, torch.Tensor, int], torch.Tensor]   # (modelo, entr
 ### 2.5 Tratamento de imagens
 
 - Normalização ImageNet **antes** do forward; desnormalização **só** para exibir.
+- Escala de exibição: `viz.scale_for_display(high=0.99, gamma=0.5)` (corte no
+  quantil 99% + gamma). Nunca em métrica — ver as medições das etapas 1–2 na
+  seção 0.
 - `model.eval()` sempre: BatchNorm em modo `train` produz mapas inúteis.
 - Saliency: `torch.enable_grad()` obrigatório (não pode ser `inference_mode`).
 

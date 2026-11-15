@@ -38,8 +38,13 @@ def input_gradient(
 
 
 def saliency_map(grad: torch.Tensor) -> torch.Tensor:
-    """(3, H, W) com sinal -> (H, W) nao-negativo, pelo maximo do modulo por pixel."""
-    return grad.abs().amax(dim=0)
+    """(3, H, W) com sinal -> (H, W) nao-negativo, pelo maximo do modulo por pixel.
+
+    Gradientes com menos de 3 dims (entrada sem eixo de canais, usados nos
+    testes) nao tem o que reduzir: devolvemos a magnitude tal como veio.
+    """
+    magnitude = grad.abs()
+    return magnitude.amax(dim=0) if grad.ndim == 3 else magnitude
 
 
 def saliency(
