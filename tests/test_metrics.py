@@ -64,6 +64,27 @@ def test_saliency_map_fns_covers_the_three_modes():
         saliency_map_fn("cam")
 
 
+def test_gradcam_map_fn_matches_core():
+    """O adaptador tem que entregar exatamente o mapa de `core.gradcam`."""
+    from gradcam.core import gradcam
+    from gradcam.metrics import gradcam_map_fn
+
+    model = nn.Sequential(nn.Conv2d(3, 4, 3, padding=1), nn.ReLU(),
+                          nn.Conv2d(4, 6, 3, padding=1), nn.ReLU(),
+                          nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Linear(6, 5))
+    x = torch.randn(1, 3, 8, 8)
+
+    expected, _ = gradcam(model, x, 3)
+    heatmap = gradcam_map_fn()(model, x, 3)
+    assert torch.allclose(heatmap, expected)
+    assert heatmap.shape == (8, 8)
+    assert heatmap.min() >= 0
+
+    # `layer` e' repassado: explicitar a camada nao muda o padrao aqui (ela ja'
+    # e' a escolhida por `resolve_layer`), mas tem que continuar valida.
+    assert torch.allclose(gradcam_map_fn(model[3])(model, x, 3), expected)
+
+
 class LinearMap(nn.Module):
     """modelo sem ReLU com pesos fixos positivos: gradiente sempre nao-constante."""
 

@@ -75,10 +75,18 @@ def test_figure_grid_one_axis_per_cell():
         row_titles=("linha 1", "linha 2"),
         suptitle="teste",
     )
-    assert len(fig.axes) == 6
-    assert fig.axes[0].get_title() == "a"
-    assert fig.axes[3].get_title() == ""  # titulo so' na primeira linha
+    # 6 celulas + 1 coluna de rotulos por linha.
+    assert len(fig.axes) == 8
+    assert fig.axes[1].get_title() == "a"
+    assert fig.axes[0].texts[0].get_text() == "linha 1"
+    assert fig.axes[4].get_title() == ""  # titulo so' na primeira linha
     plt.close(fig)
+
+
+def test_figure_grid_rejects_wrong_number_of_titles():
+    cell = torch.zeros(4, 4, 3, dtype=torch.uint8).numpy()
+    with pytest.raises(ValueError):
+        figure_grid([[cell]], row_titles=("a", "b"))
 
 
 @pytest.mark.skipif(not ANNOTATIONS.exists(), reason="COCO nao baixado")

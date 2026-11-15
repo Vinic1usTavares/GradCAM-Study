@@ -122,6 +122,65 @@ o motivador direto do Grad-CAM. O JSON (`results/metrics/class_discrimination.js
 é o contrato consumido por `notebooks/02_relus.ipynb`.
 
 
+### Medições da etapa 4
+
+`scripts/04_gradcam.py`, 4 imagens (as mesmas das etapas 1–2), top-1 vs top-2,
+camada = camada de saída do último bloco (ReLU em `features.29`, o `conv5_3` do
+artigo), semente 0. Mapa 14×14 — a resolução de `conv5_3` no VGG-16 com entrada
+224×224. ~18 s em CPU (8 backward + 28 forward: ~330 ms cada).
+
+| Métrica | Valor |
+|---|---|
+| Spearman(A, B) na mesma imagem | 0,760 (0,649 – 0,874) |
+| Controle: imagens diferentes, mesma classe | +0,009 – +0,211 (4 pares) |
+| Resolução do mapa | 14 × 14 |
+
+O Grad-CAM **não** é mais discriminativo que o vanilla backprop no Spearman
+(0,76 vs 0,64). Isso é esperado e não invalida o método: a métrica compara a
+*ordenação* de pixels de mapas com frequências espaciais muito diferentes — 14×14
+suavizado contra 224×224 com ruído por pixel. Num mapa grosseiro, dois blobs
+diferentes ainda compartilham a ordem grosseira (topo/base, centro/borda). A
+comparação com deconv/guided (0,999, mapas também finos) continua sendo a
+relevante; contra elas o Grad-CAM cai de 0,999 para 0,76.
+
+A avaliação correta de discriminação de classe é a **Fase 8** (pointing game
+*cued*, tabela comparável), onde a resolução não contamina a métrica. O critério
+desta fase é qualitativo, e ele passa — mas com ressalvas medidas. Comparando o
+pixel de máximo de cada mapa com a box de ground truth (mapeada para a grade de
+224×224; `preprocess` redimensiona sem crop), os 8 mapas têm o pico **dentro** da
+box. Entre as duas classes, porém, o pico só se desloca em 2 das 4 imagens:
+
+| Imagem | classe A → pico | classe B → pico | deslocamento |
+|---|---|---|---|
+| broccoli | (152, 88) | (152, 88) | 0 px |
+| parking meter | (152, 184) | (152, 152) | 32 px |
+| laptop | (152, 56) | (152, 56) | 0 px |
+| vase | (56, 216) | (120, 216) | 64 px |
+
+Em `broccoli` e `laptop` o mapa é o mesmo para as duas classes — 14×14 não separa
+duas texturas parecidas, e o rho de 0,874/0,649 diz exatamente isso. Onde separa
+(`vase`: desloca para a direita, na borda da box; `parking meter`: sobe 2 células),
+a mudança é grosseira. É o mesmo defeito que o §4 do paper admite ao comparar com
+localização fraca, e o que a Fase 8 vai medir de forma comparável.
+
+Controles de implementação cobertos por teste (`tests/test_core.py`, 8 testes):
+
+1. **Hook removido**: `test_gradcam_removes_its_hook` garante que a captura de
+   ativação não vaza para chamadas seguintes (o erro clássico: `forward_hook`
+   acumulando 8 ativações ao longo do script).
+2. **Classe explícita vs inferida**: `class_idx=None` usa o `argmax`; a bateria
+   sempre passa a classe, para o mapa e o rótulo não saírem de classes diferentes.
+3. **`apply_relu=False`**: existe na API para a ablacao da Fase 9, mas não virou
+   figura — a escala de exibição corta os negativos e as duas imagens saem quase
+   idênticas, o que sugeriria (falsamente) que o ReLU não importa.
+
+Um detalhe de implementação que vale registrar: o Grad-CAM precisa do score
+**antes** do softmax e de um backward com one-hot na classe `c`. Usar a
+probabilidade depois do softmax muda o mapa (as outras 999 classes entram no
+gradiente com peso não nulo), e é uma diferença silenciosa — o mapa continua
+plausível.
+
+
 ### Restrição descoberta: COCO × ImageNet
 
 Apenas **18** das 80 categorias do COCO são classes ImageNet verbatim
@@ -269,7 +328,7 @@ MapFn = Callable[[nn.Module, torch.Tensor, int], torch.Tensor]   # (modelo, entr
 | **1** | Saliency vanilla `∂y^c/∂x` no VGG-16 | mapas com aspecto de contorno ruidoso; 4 imagens × 2 classes |
 | **2** | Deconv e Guided Backprop (mesma conta, outra máscara) | 3 mapas lado a lado da mesma imagem/classe |
 | **3** | **Não-discriminação de classe**: `Spearman(map_cat, map_dog)` na mesma imagem | GB alto, mostrando quantitativamente o problema que o paper resolve — **medido: 0,999 em deconv/guided, 0,642 em vanilla** |
-| **4** | Grad-CAM (Eqs. 1–2) | mapa de "cat" no gato e de "dog" no cachorro, na mesma foto |
+| **4** | Grad-CAM (Eqs. 1–2) | mapa de "cat" no gato e de "dog" no cachorro, na mesma foto — **proxy medido: Spearman(A,B) = 0,760 contra 0,999 de deconv/guided na Fase 3**; controle entre imagens +0,009–0,211 |
 | **5** | CAM em ResNet18 (`conv → GAP → fc`) e equivalência numérica com Grad-CAM | Spearman > 0,9 na mesma camada; valida a prova da §3.1 |
 | **6** | Guided Grad-CAM = Fase 4 ⊙ Fase 2 | detalhe fino (listras) sem perder discriminação de classe |
 | **7** | Counterfactual (negar o gradiente em (1)) | mapa desloca para a evidência contrária |

@@ -118,45 +118,56 @@ def figure_grid(
     suptitle: str | None = None,
     figsize: tuple[float, float] | None = None,
     dpi: int = 130,
+    label_width: float = 1.0,
 ):
     """Grade de imagens RGB uint8, uma linha por caso, pronta para salvar.
 
     `rows` e' uma sequencia de linhas; cada linha e' uma sequencia de arrays
     (H, W, 3). Linhas de tamanhos diferentes sao permitidas: as celulas que
     faltam ficam em branco.
+
+    `row_titles` viram uma coluna de rotulos a esquerda (largura relativa
+    `label_width`), com `wrap` na largura da celula. Nao usamos texto
+    rotacionado: o `tight_layout` mede a caixa do texto antes da rotacao e,
+    com rotulo longo, encolhia os eixos para ~3% da largura.
     """
     if not rows:
         raise ValueError("figure_grid precisa de pelo menos uma linha")
 
     n_rows = len(rows)
     n_cols = max(len(row) for row in rows)
-    if figsize is None:
-        height, width = rows[0][0].shape[:2]
-        aspect = height / width
-        figsize = (2.2 * n_cols, 2.2 * aspect * n_rows)
+    has_labels = bool(row_titles)
+    if row_titles and len(row_titles) != n_rows:
+        raise ValueError(
+            f"row_titles tem {len(row_titles)} itens para {n_rows} linhas"
+        )
 
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, dpi=dpi,
-                             squeeze=False)
+    height, width = rows[0][0].shape[:2]
+    if figsize is None:
+        cols = n_cols + (label_width if has_labels else 0.0)
+        figsize = (2.1 * cols, 2.1 * (height / width) * n_rows)
+
+    fig = plt.figure(figsize=figsize, dpi=dpi, layout="constrained")
+    widths = ([label_width] if has_labels else []) + [1.0] * n_cols
+    grid = fig.add_gridspec(n_rows, len(widths), width_ratios=widths)
 
     for i, row in enumerate(rows):
-        for j in range(n_cols):
-            ax = axes[i][j]
-            ax.set_axis_off()
-            if j < len(row):
-                ax.imshow(row[j], interpolation="nearest")
-                if i == 0 and col_titles and j < len(col_titles):
-                    ax.set_title(col_titles[j], fontsize=10)
-        if row_titles and i < len(row_titles):
-            # `ax.text` continua sendo desenhado com o eixo desligado.
-            axes[i][0].text(
-                -0.04, 0.5, row_titles[i],
-                transform=axes[i][0].transAxes,
-                rotation=90, va="center", ha="right", fontsize=8,
+        offset = 1 if has_labels else 0
+        if has_labels:
+            label_ax = fig.add_subplot(grid[i, 0])
+            label_ax.set_axis_off()
+            label_ax.text(
+                0.0, 0.5, row_titles[i],
+                ha="left", va="center", fontsize=8, wrap=True,
+                transform=label_ax.transAxes,
             )
+        for j, cell in enumerate(row):
+            ax = fig.add_subplot(grid[i, j + offset])
+            ax.set_axis_off()
+            ax.imshow(cell, interpolation="nearest")
+            if i == 0 and col_titles and j < len(col_titles):
+                ax.set_title(col_titles[j], fontsize=10)
 
     if suptitle:
         fig.suptitle(suptitle, fontsize=11)
-        fig.tight_layout(rect=(0, 0, 1, 0.97))
-    else:
-        fig.tight_layout()
     return fig

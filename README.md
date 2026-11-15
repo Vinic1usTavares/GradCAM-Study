@@ -67,7 +67,7 @@ scripts/           um executável por experimento
 | 1. Saliency de gradiente | **concluída** — `02_saliency.py`, 4 imagens × 2 classes |
 | 2. Deconv / Guided Backprop | **concluída** — 3 mapas lado a lado |
 | 3. Teste de não-discriminação de classe | **concluída** — 0,999 em deconv/guided vs 0,642 em vanilla |
-| 4. Grad-CAM | pendente |
+| 4. Grad-CAM | **concluída** — mapa 14×14, Spearman entre classes 0,760 |
 | 5. CAM vs Grad-CAM (§3.1) | pendente |
 | 6. Guided Grad-CAM | pendente |
 | 7. Counterfactual | pendente |
@@ -75,12 +75,13 @@ scripts/           um executável por experimento
 | 9. Ablações | pendente |
 | 10. Sanity checks (Adebayo) | pendente |
 
-Figuras das Fases 1–3 em `results/figures/`; métricas em `results/metrics/`
+Figuras das Fases 1–4 em `results/figures/`; métricas em `results/metrics/`
 (`--overlay` troca cinza por jet):
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\02_saliency.py              # ~30 s em CPU
 .\.venv\Scripts\python.exe scripts\03_class_discrimination.py  # ~75 s em CPU
+.\.venv\Scripts\python.exe scripts\04_gradcam.py               # ~18 s em CPU
 ```
 
 O resultado é o do artigo: as três regras produzem estéticas distintas na mesma
@@ -96,6 +97,14 @@ da top-2 na **mesma** imagem é 0,999 em `deconv`/`guided` — os mapas localiza
 objeto, mas não dizem qual classe está sendo vista. Em `vanilla` cai para 0,642,
 ainda longe de discriminar. Controle: entre imagens diferentes a correlação vai
 a ~0, então a métrica não é degenerada.
+
+O Grad-CAM (Eqs. 1–2) entra na Fase 4 e leva esse número a 0,760 — abaixo do
+0,999, mas **acima** do 0,642 do vanilla. A comparação honesta é contra
+`deconv`/`guided`, que operam na mesma resolução de pixel: 14×14 contra 224×224
+muda a ordenação antes de qualquer diferença de método. O que dá para afirmar
+com os dados: os 8 mapas têm o pico dentro da box de ground truth, e o pico só se
+desloca entre as duas classes em 2 das 4 imagens. Discriminação de classe em si
+é a Fase 8 (pointing game *cued*), onde a resolução não entra na conta.
 
 
 ## Reprodutibilidade

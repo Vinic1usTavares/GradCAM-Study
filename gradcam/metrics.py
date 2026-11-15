@@ -29,6 +29,22 @@ from .saliency import saliency
 MapFn = Callable[[nn.Module, torch.Tensor, int], torch.Tensor]
 
 
+def gradcam_map_fn(layer: nn.Module | str | None = None) -> MapFn:
+    """Adapta `core.gradcam` a assinatura `MapFn`.
+
+    `layer` fixa a camada (nome ou modulo); `None` deixa o `resolve_layer`
+    escolher a ultima conv. O adaptador existe para a bateria da Fase 8 rodar
+    Grad-CAM e as saliencias pela mesma interface.
+    """
+    from .core import gradcam
+
+    def _map_fn(model: nn.Module, x: torch.Tensor, class_idx: int) -> torch.Tensor:
+        heatmap, _ = gradcam(model, x, class_idx, layer=layer)
+        return heatmap
+
+    return _map_fn
+
+
 def saliency_map_fn(mode: str) -> MapFn:
     """Adapta `saliency(mode=...)` a assinatura `MapFn`.
 

@@ -110,7 +110,7 @@ Tempos conforme §6. Soma 29 min + 3 min de folga = 32 min.
 | `01_saliency` | 2 · 3 min | "e se eu derivar a saída em relação à imagem?" | `grad` cru (3×224×224) → um canal → `max\|·\|`; **escala de exibição** (quantil 99% + gamma); 1 imagem × 2 classes, cinza | 4 s | Fase 1 ✅ |
 | `02_relus` | 3 · 4 min | "por que Deconv e Guided parecem melhores?" | 1 célula com as 3 linhas de máscara (o slide **é** o código); 3 mapas lado a lado; picos (~0,3 / ~6 / ~2); **punchline:** Spearman(classe A, classe B) = 0,999 em deconv/guided vs 0,642 em vanilla, em barras | 5 s | Fase 2 ✅ / Fase 3 ✅ |
 | `03_cam` | 4 · 2 min | "CAM: e se eu tirar o FC?" | cirurgia no ResNet18 `conv → GAP → fc`; CAM via hook; custo de 2,98% top-1 | 1 s | Fase 5 |
-| `04_gradcam` | 5 · 4 min | "como obter CAM sem trocar a arquitetura?" | **derivação em 8 células**: hook em `A` → `y^c` → one-hot → `α=GAP(∂y/∂A)` → `ΣαA` → `ReLU` → upsample → overlay; célula-espelho `gradcam(model, x, c)`; ablação ReLU on/off | 3 s | Fase 4 |
+| `04_gradcam` | 5 · 4 min | "como obter CAM sem trocar a arquitetura?" | **derivação em 8 células**: hook em `A` → `y^c` → one-hot → `α=GAP(∂y/∂A)` → `ΣαA` → `ReLU` → upsample → overlay; célula-espelho `gradcam(model, x, c)`; fecha com `Spearman(A,B)` calculado na célula (0,760 medido pelo script, contra 0,999 de deconv/guided) | 3 s | Fase 4 ✅ |
 | `05_equivalencia` | 6 · 3 min | "Grad-CAM é mesmo um CAM generalizado?" | `w_k = Z·α_k`; scatter CAM × Grad-CAM na mesma camada; Spearman > 0,9 | 1 s | Fase 5 |
 | `06_guided` | 7 · 2 min | "dá para ter resolução **e** discriminação?" | `Grad-CAM ⊙ GB`; zoom nas listras da zebra; comparar resolução (224) com classe | 3 s | Fase 6 |
 | `07_counterfactual` | bônus · 1 min | "e a evidência *contra*?" | negar `α` em (1); mapa migra para o objeto vizinho | 3 s | Fase 7 |
@@ -148,6 +148,15 @@ vanilla, n=16), então a punchline deixou de ser pergunta em aberto.
 **`04_gradcam`** — centro do seminário. Oito células pequenas, cada uma com uma
 equação do paper no markdown acima. A nona célula é a chamada de biblioteca que
 produz exatamente o mesmo mapa — fecha o argumento "isto é implementável".
+
+O único número da fase (`Spearman(A,B)`) é calculado na célula, não lido de JSON:
+são dois backwards (~2 s) e vale mais ao vivo. A resolução do mapa (14×14) entra
+como nota obrigatória — comparar esse Spearman com o 0,999 de `deconv`/`guided`
+compara mapas 14×14 contra 224×224, e o número do Grad-CAM fica **acima** do
+0,642 do vanilla por esse motivo de escala, não por ser menos discriminativo.
+A ablacao ReLU on/off sai daqui: a figura do script mostrou que ela quase não
+muda a imagem exibida (a escala de exibição corta os negativos); ela é medida por
+localização na Fase 9 e volta no `08_numeros`.
 
 **`08_numeros`** — nenhum cálculo. Lê `pointing_game.json` e
 `occlusion_spearman.json`, plota as duas tabelas e destaca só a **ordem** dos
@@ -250,17 +259,20 @@ Um notebook nasce junto com a fase que ele demonstra — nunca antes.
 
 | Quando | Entrega |
 |---|---|
-| **agora** | `deck.py`, `cases.py`, `assets/`, `00_indice.ipynb`, `01_saliency.ipynb`, `02_relus.ipynb` (sem a punchline) |
-| Fase 3 | fecha a punchline de `02_relus` com `class_discrimination.json` |
-| Fase 4 | `04_gradcam.ipynb` |
+| **agora** | `deck.py`, `cases.py`, `assets/`, `00_indice.ipynb`, `01_saliency.ipynb`, `02_relus.ipynb` (com a punchline) |
+| Fase 3 ✅ | fecha a punchline de `02_relus` com `class_discrimination.json` |
+| Fase 4 ✅ | `04_gradcam.ipynb` |
 | Fase 5 | `03_cam.ipynb`, `05_equivalencia.ipynb` |
 | Fases 6–7 | `06_guided.ipynb`, `07_counterfactual.ipynb` |
 | Fases 8–9 | `08_numeros.ipynb` |
 | Fase 10 | `09_sanity.ipynb`, `10_limitacoes.ipynb` |
 | Fase 11 | `--export`, ensaio cronometrado, `notebooks/README.md` |
 
-Com as Fases 1–2 concluídas, `00_indice`, `01_saliency` e `02_relus` (sem a
-punchline) não dependem de código novo — só de `data/` presente na máquina.
+Com as Fases 1–4 concluídas, `00_indice`, `01_saliency`, `02_relus` (com a
+punchline, já que `class_discrimination.json` existe) e `04_gradcam` não dependem
+de código novo — só de `data/` presente na máquina. As figuras correspondentes
+(`02_saliency_*`, `03_class_discrimination`, `04_gradcam_*`) já estão em
+`results/figures/`.
 
 ---
 
@@ -313,4 +325,5 @@ Nesta ordem:
 | 2026-11-15 | `b35648d` | versão inicial: 11 notebooks, cache de `results/metrics/`, `webpdf`, asset gato+cachorro |
 | 2026-11-15 | `6f3902e` | pós-pull (Fases 1–2): `deck.grid` passa a delegar a `viz.figure_grid`; escala de exibição vira decisão fixa (item 7 da §0); runtimes recalibrados com backward medido em 1,1 s; `01`/`02` promovidos para "agora"; critério de tamanho do `.ipynb` corrigido para 4 MB com dpi 110 |
 | 2026-11-15 | `9b55397` | pós-Fase 3: corrige a magnitude de `vanilla` (a regra estava "passa sempre"; agora `x > 0`, pico ~0,3 em vez de 10⁵–10⁶) e preenche a punchline de `02_relus` com `class_discrimination.json` (0,999 / 0,642, n=16) |
+| 2026-11-15 | `3d7b30b` | pós-Fase 4: `04_gradcam` liberado (script + figura prontos, mapa 14×14, rho 0,760); ablacao ReLU sai do notebook e vai para a Fase 9 (a figura quase não muda com a escala de exibição); `Spearman` calculado em célula em vez de JSON novo |
 
