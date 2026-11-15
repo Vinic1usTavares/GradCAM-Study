@@ -1,0 +1,298 @@
+# GradCAM-Study — Plano Geral
+
+Reimplementação do Grad-CAM **do zero** (sem `pytorch-grad-cam`), reproduzindo as
+avaliações do artigo com os meios disponíveis, seguida de seminário.
+
+- **Paper**: Selvaraju, Cogswell, Das, Vedantam, Parikh & Batra. *Grad-CAM: Visual
+  Explanations from Deep Networks via Gradient-based Localization*. `arXiv:1610.02391v4`
+  (IJCV 2019). Arquivo local: `GradCAM-paper.pdf`.
+- **Vídeo de referência**: "Where Does AI Look? Grad-CAM, Built From Scratch" (mesanu,
+  32min38s). Cobre o artigo e acrescenta material que **não** está nele: sanity checks
+  (Adebayo et al. 2018), Grad-CAM++ e Score-CAM.
+- **Escopo**: classificação de imagens apenas. Captioning (§8.1) e VQA (§8.2) fora.
+
+---
+
+## 0. Restrições do ambiente
+
+| Item | Situação |
+|---|---|
+| Python | 3.14.3 (`./.venv`) |
+| PyTorch | **2.15.0+cpu** — o PyPI no Windows entrega build sem CUDA |
+| GPU | NVIDIA MX550, **2 GB** — **não usada** (ver decisão abaixo) |
+| Datasets | COCO val2017 (816 MB) + anotações (253 MB) — baixados |
+| Pesos | `vgg16-397923af.pth` (553 MB) — em `data/weights/` |
+
+### Decisão: CPU em vez de GPU
+
+Para Python 3.14, os índices CUDA do PyTorch vão só até `2.14.1+cu126`; não existe
+build CUDA do 2.15. Trocar exigiria downgrade de torch/torchvision + ~3 GB de
+download. Medido em CPU: **~330 ms por forward** do VGG-16 a 224×224.
+
+Custo estimado do pior caso (oclusão, 36 patches × 100 imagens): ~20 min. Não
+justifica o downgrade. Se a Fase 8/10 crescer, o comando é:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --force-reinstall --no-deps `
+    torch torchvision --index-url https://download.pytorch.org/whl/cu126
+```
+
+### Medições da etapa 0
+
+| Métrica | Valor |
+|---|---|
+| VGG-16 forward, CPU | 316–414 ms |
+| Top-1 (27 imagens, 18 categorias verbatim, `stratified_subset`) | **63%** |
+| Top-5, mesmo conjunto | 74% |
+| `pytest` | 7 passed |
+
+`Resize(256) + CenterCrop(224)` não trouxe ganho medível sobre `Resize((224,224))`;
+ficou o resize direto porque preserva a geometria das boxes do COCO (afim
+alinhado aos eixos, nenhuma box cortada). Ver `gradcam/models.py:preprocess`.
+
+### Restrição descoberta: COCO × ImageNet
+
+Apenas **18** das 80 categorias do COCO são classes ImageNet verbatim
+(`backpack`, `banana`, `broccoli`, `cup`, `dining table`, `kite`, `laptop`,
+`microwave`, `mouse`, `orange`, `parking meter`, `pizza`, `refrigerator`,
+`toaster`, `traffic light`, `umbrella`, `vase`, `zebra`).
+
+Isso afeta a Fase 8: no pointing game do paper a visualização é *cued* com o
+rótulo de ground truth, não com a predição. Protocolo adotado: para cada
+categoria COCO, definir um conjunto de synsets ImageNet correspondentes e usar o
+`argmax` do modelo **restrito a esse conjunto** como classe de cue. Para as 18
+verbatim, o conjunto é unitário.
+
+
+---
+
+## 1. Estrutura do repositório
+
+```
+GradCAM-Study/
+├── gradcam/
+│   ├── __init__.py
+│   ├── models.py          # carregamento dos modelos pré-treinados + correção de ReLU in-place
+│   ├── relu_variants.py   # vanilla | deconv | guided  (autograd.Function)
+│   ├── saliency.py        # Fases 1–2: gradiente w.r.t. a entrada
+│   ├── core.py            # cam(), gradcam(), counterfactual()
+│   ├── guided.py          # guided_gradcam = gradcam ⊙ guided
+│   ├── viz.py             # colormap, overlay, grade de figuras
+│   ├── metrics.py         # MapFn plugável: pointing game, Spearman vs oclusão
+│   └── data.py            # COCO val2017: leitura de imagens e boxes
+├── scripts/
+│   ├── 01_forward_sanity.py
+│   ├── 02_saliency.py
+│   ├── 03_class_discrimination.py
+│   ├── 04_gradcam.py
+│   ├── 05_cam_vs_gradcam.py
+│   ├── 06_guided_gradcam.py
+│   ├── 07_counterfactual.py
+│   ├── 08_pointing_game.py
+│   ├── 09_occlusion_correlation.py
+│   ├── 10_ablations.py
+│   └── 11_sanity_checks.py
+├── tests/
+├── data/                  # gitignored (COCO + pesos)
+├── results/figures/
+├── plans/
+├── requirements.txt
+├── .gitignore
+└── README.md
+```
+
+**Regra**: nada de `pytorch-grad-cam` no código de produção. No máximo como oráculo
+num teste de `pytest`.
+
+---
+
+## 2. Decisões técnicas
+
+### 2.1 ReLU in-place
+
+O `torchvision` usa `nn.ReLU(inplace=True)`, o que quebra hooks e versões de tensor.
+A correção é feita uma única vez em `models.py`:
+
+```python
+for m in model.modules():
+    if isinstance(m, nn.ReLU):
+        m.inplace = False
+```
+
+### 2.2 As três regras de backward (Fases 1–2)
+
+Os três métodos de saliência diferem **apenas** na máscara aplicada ao gradiente na
+volta pelo ReLU:
+
+| Método | `grad_out` passa se… |
+|---|---|
+| Vanilla (Simonyan 2013) | sempre |
+| Deconvolution (Zeiler 2014) | `grad_out > 0` |
+| Guided Backprop (Springenberg 2014) | `grad_out > 0` **e** `x > 0` |
+
+Implementado via `torch.autograd.Function` (e não `register_full_backward_hook`, que
+tem restrições documentadas e é mais lento):
+
+```python
+class _ReluVariant(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, mode):
+        ctx.save_for_backward(x); ctx.mode = mode
+        return x.clamp(min=0)
+    @staticmethod
+    def backward(ctx, g):
+        (x,) = ctx.saved_tensors
+        if ctx.mode == "deconv":
+            g = g * (g > 0)
+        elif ctx.mode == "guided":
+            g = g * (g > 0) * (x > 0)
+        return g, None
+```
+
+Nota para o seminário: Guided Backprop **não é o gradiente de nenhuma função** (não é
+conservativo) — é heurística de visualização. Conecta com a crítica de Adebayo et al.
+
+### 2.3 Grad-CAM
+
+```python
+α_k^c = (1/Z) Σ_i Σ_j ∂y^c/∂A^k_ij        (1)
+L^c   = ReLU( Σ_k α_k^c · A^k )           (2)
+```
+
+- `y^c` é o score **antes** do softmax (o paper é explícito, §3).
+- Semente do backward: uma-hot na classe `c` ⇒ gradientes zero para as demais (§Fig. 2).
+- ReLU em (2) não é opcional: sem ele o erro de localização sobe 15,3% (Tabela 3).
+- Captura: `forward hook` guarda `A`; `A.retain_grad()`; `torch.autograd.grad(y_c, A)`.
+
+### 2.4 Interface plugável de mapas
+
+Toda avaliação passa por uma assinatura única, senão cada método duplica seu script:
+
+```python
+MapFn = Callable[[nn.Module, torch.Tensor, int], torch.Tensor]   # (modelo, entrada, classe) -> HxW
+```
+
+### 2.5 Tratamento de imagens
+
+- Normalização ImageNet **antes** do forward; desnormalização **só** para exibir.
+- `model.eval()` sempre: BatchNorm em modo `train` produz mapas inúteis.
+- Saliency: `torch.enable_grad()` obrigatório (não pode ser `inference_mode`).
+
+---
+
+## 3. Fases
+
+| # | Entrega | Critério de aceite |
+|---|---|---|
+| **0** | `requirements.txt`, env instalado, VGG-16 + COCO val2017 baixados, `data.py` lendo boxes | `01_forward_sanity.py` acerta top-1 em 3 imagens |
+| **1** | Saliency vanilla `∂y^c/∂x` no VGG-16 | mapas com aspecto de contorno ruidoso; 4 imagens × 2 classes |
+| **2** | Deconv e Guided Backprop (mesma conta, outra máscara) | 3 mapas lado a lado da mesma imagem/classe |
+| **3** | **Não-discriminação de classe**: `Spearman(map_cat, map_dog)` na mesma imagem | GB alto (≈0,9), mostrando quantitativamente o problema que o paper resolve |
+| **4** | Grad-CAM (Eqs. 1–2) | mapa de "cat" no gato e de "dog" no cachorro, na mesma foto |
+| **5** | CAM em ResNet18 (`conv → GAP → fc`) e equivalência numérica com Grad-CAM | Spearman > 0,9 na mesma camada; valida a prova da §3.1 |
+| **6** | Guided Grad-CAM = Fase 4 ⊙ Fase 2 | detalhe fino (listras) sem perder discriminação de classe |
+| **7** | Counterfactual (negar o gradiente em (1)) | mapa desloca para a evidência contrária |
+| **8** | Pointing game + Spearman vs oclusão, **todos os métodos na mesma bateria** | tabela comparável em ordenação à Tabela 1/2 do paper |
+| **9** | Ablações (ReLU on/off, GAP vs GMP, camada conv3_3/4_3/5_3, gradiente vanilla/guided/deconv) | reproduzir a **direção** da Tabela 3 |
+| **10** | Sanity checks (cascade randomization, Adebayo et al.) | queda monotônica da correlação ao randomizar camadas de cima para baixo |
+| **11** | README com tabela "paper vs. nosso número" + material do seminário | — |
+
+---
+
+## 4. Protocolo de avaliação
+
+O que **não** é replicável, e por quê:
+
+| Paper | Motivo | Substituto |
+|---|---|---|
+| Erro de localização ILSVRC-15 | exige ImageNet val + boxes (~7 GB) | **pointing game** em COCO val2017 |
+| Estudo humano (AMT) | 43–54 trabalhadores | análise qualitativa curada |
+| IoU de segmentação VOC 2012 | +2 GB e outro modelo | opcional, se houver tempo |
+
+**Conjunto de avaliação**: COCO val2017, subset de ~300–500 imagens com anotações de
+instância. Serve para pointing game (ponto de máximo dentro da box GT da classe predita)
+e para a correlação com oclusão (referência de fidelidade local).
+
+**Cue do pointing game** (ver restrição COCO × ImageNet na seção 0): o paper usa o
+rótulo de ground truth, não a predição. Para cada categoria COCO, mapear para um
+conjunto de synsets ImageNet e usar o `argmax` do modelo restrito a esse conjunto.
+Sem isso, usar a predição do modelo como cue gera muitos casos insolúveis, porque o
+VGG-16 pré-treinado no ImageNet acerta ~63% nesse domínio.
+
+**Ablações**: reproduzimos a *direção* dos efeitos, não os números absolutos — aqueles
+dependem do setup Caffe original e de avaliação 10-crop. Isso fica explícito no README.
+
+---
+
+## 5. Números de referência do paper
+
+| Avaliação | Valor |
+|---|---|
+| Localização fraca ILSVRC-15, VGG-16 top-1 | 56,51 (CAM 57,20; Backprop 61,12; c-MWP 70,92) |
+| AlexNet top-1 | 68,3 (c-MWP 92,6) |
+| Segmentação VOC 2012 (IoU) | 49,6 (CAM 44,6) |
+| Pointing game | 70,58% (c-MWP 60,30%) |
+| Estudo humano, discriminação de classe | GB 44,44% → Guided Grad-CAM 61,23% |
+| Confiabilidade relativa | GB +1,00 → Guided Grad-CAM +1,27 |
+| Spearman vs oclusão | Grad-CAM 0,254 / Guided Grad-CAM 0,261 (GB 0,168) |
+| Ablação: sem ReLU em (2) | erro 59,65 → 74,98 |
+| Ablação: Deconv-ReLU | erro 83,95 |
+
+---
+
+## 6. Roteiro do seminário
+
+1. O gancho: médicos vs. enfermeiras, o modelo olha o rosto (Fig. 8) — 2 min
+2. Backprop como mapa de saliência: `∂y^c/∂x` — 3 min
+3. Três regras de ReLU, três estéticas — mas o mapa do gato é igual ao do cachorro (nosso número) — 4 min
+4. CAM: exige trocar a arquitetura, perde 2,98% top-1 — 2 min
+5. Grad-CAM: a derivação (Eqs. 1–2) — 4 min
+6. Generaliza CAM: `w_k = Z·α_k`, validado numericamente — 3 min
+7. Guided Grad-CAM como composição: resolução × discriminação — 2 min
+8. Nossos números vs. paper — 3 min
+9. Sanity checks (Adebayo): o contra-argumento — 3 min
+10. Limitações: 14×14, degrada em camadas rasas, não é pixel-accuracy; Grad-CAM++/Score-CAM — 2 min
+
+---
+
+## 7. Riscos
+
+| Risco | Mitigação |
+|---|---|
+| Download de COCO falhar | plano B: ~100 imagens locais, avaliação só qualitativa |
+| VGG-16 estourar memória | batch 1; `inference_mode` onde possível |
+| `pycocotools` difícil de compilar | não usar: ler `instances_val2017.json` direto com `json` |
+| Expectativa de números idênticos ao paper | README compara ordenação relativa, com justificativa |
+
+---
+
+## 8. Dados: nada versionado, tudo verificável
+
+O repositório **não** contém dados. `data/` está no `.gitignore` (3,3 GB com os
+`.zip`, 2,2 GB sem eles) e só `plans/`, `gradcam/`, `scripts/`, `tests/` e
+`requirements.txt` vão para o GitHub.
+
+Colaborador novo:
+
+```powershell
+git clone ...
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe scripts\00_download.py          # baixa o que faltar
+.\.venv\Scripts\python.exe scripts\00_download.py --check  # exit 0 = pronto
+```
+
+`--check` é offline e valida, em ordem:
+
+| Item | Critério |
+|---|---|
+| pesos (`vgg16`, `alexnet`, `resnet18`) | tamanho em bytes == `EXPECTED_SIZES` |
+| zips do COCO | tamanho em bytes == `EXPECTED_SIZES` |
+| `data/coco/val2017/` | 5000 arquivos `.jpg` |
+| `instances_val2017.json` | abre, 5000 imagens, > 0 anotações |
+| extração parcial | toda imagem anotada existe em disco |
+
+O download em si também é idempotente: grava em `.part` e só renomeia no fim
+(nunca deixa arquivo truncado com nome válido), pula o que já tem tamanho
+correto, e usa um marcador de extração **por arquivo** (`.extracted/<zip>.done`)
+— marcador compartilhado faria o segundo zip ser pulado.
+

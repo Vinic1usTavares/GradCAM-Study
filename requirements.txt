@@ -1,0 +1,8 @@
+torch>=2.9
+torchvision>=0.24
+numpy>=2.0
+pillow>=11.0
+matplotlib>=3.9
+scipy>=1.14
+tqdm>=4.66
+pytest>=8.0
