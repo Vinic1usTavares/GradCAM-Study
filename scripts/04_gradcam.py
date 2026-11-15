@@ -17,6 +17,13 @@ Saida:
 Uso:
     .\\.venv\\Scripts\\python.exe scripts\\04_gradcam.py
     .\\.venv\\Scripts\\python.exe scripts\\04_gradcam.py --layer conv4_3
+    .\\.venv\\Scripts\\python.exe scripts\\04_gradcam.py --images 95786 --classes cup,vase
+
+`--images` aceita id, nome de arquivo do val2017 ou caminho de foto. Com
+`--classes A,B` as duas classes sao explicitas, uma por objeto — e' o que faz a
+figura de dois objetos mostrar discriminacao (o top-2 do modelo quase sempre cai
+no mesmo objeto). O arquivo de saida ganha sufixo nesse caso, para nao
+sobrescrever a figura canonica.
 
 A ablacao "sem ReLU" de (2) fica na Fase 9, medida por localizacao: no mapa
 exibido ela quase nao muda nada, porque a escala de exibicao ja' corta os
@@ -33,6 +40,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import torch
+from PIL import Image
 
 from gradcam.core import VGG16_LAYERS, gradcam
 from gradcam.data import CocoVal
@@ -43,6 +51,7 @@ from gradcam.models import (
     load_model,
     predict,
     preprocess,
+    resolve_class,
 )
 from gradcam.viz import figure_grid, overlay, tensor_to_numpy
 
@@ -72,27 +81,73 @@ def layer_suffix(raw: str | None, resolved: str | None) -> str:
 
 
 def select_records(coco: CocoVal, model, labels: list[str], args) -> list[dict]:
-    verbatim = coco.verbatim_categories(labels)
-    ids = coco.stratified_subset(
-        args.per_category, seed=args.seed, categories=verbatim
-    )
+    """Registros (imagem + top-2) da amostra sorteada ou das imagens pedidas.
+
+    Com `--images`, a ordem do usuario e' preservada e nao ha corte por `--n`:
+    a lista e' explicita, truncar seria surpresa.
+    """
+    if args.images:
+        chosen = [coco.resolve(token) for token in args.images]
+    else:
+        verbatim = coco.verbatim_categories(labels)
+        ids = coco.stratified_subset(
+            args.per_category, seed=args.seed, categories=verbatim
+        )
+        chosen = [(image_id, coco.image_path(image_id)) for image_id in ids]
 
     found: list[dict] = []
-    for image_id in ids:
-        x = preprocess(coco.load_image(image_id))
+    for image_id, path in chosen:
+        image = Image.open(path).convert("RGB")
+        x = preprocess(image)
         indices, probs = predict(model, x, topk=2)
+        names = coco.object_names(image_id) if image_id is not None else []
         found.append(
             {
                 "image_id": image_id,
+                "path": path,
                 "x": x,
-                "truth": coco.object_names(image_id)[0],
+                "truth": names[0] if names else None,
                 "indices": indices,
                 "probs": probs,
             }
         )
 
+    if args.images:
+        return found
+
     found.sort(key=lambda r: labels[int(r["indices"][0])] != r["truth"])
     return found[: args.n]
+
+
+def parse_classes(value: str | None, labels: list[str]) -> list[int] | None:
+    """`--classes cup,vase` -> indices do ImageNet, exigindo exatamente duas."""
+    if value is None:
+        return None
+    tokens = [token.strip() for token in value.split(",") if token.strip()]
+    if len(tokens) != 2:
+        raise ValueError(
+            f"--classes espera duas classes separadas por virgula; recebi {value!r}"
+        )
+    return [resolve_class(token, labels) for token in tokens]
+
+
+def tag_suffix(args, records: list[dict], class_idx: list[int] | None,
+               labels: list[str]) -> str:
+    """Sufixo do arquivo quando a figura nao vem da amostra padrao.
+
+    Sem ele, `--images 95786 --classes cup,vase` gravaria por cima da figura
+    canonica de 4 imagens, que e' a evidencia do rho 0,760.
+    """
+    parts: list[str] = []
+    if args.images:
+        first = records[0]["image_id"]
+        ident = str(first) if first is not None else records[0]["path"].stem
+        if len(records) > 1:
+            ident += f"+{len(records) - 1}"
+        parts.append(ident)
+    if class_idx:
+        parts.append("-".join(labels[i].replace(" ", "_") for i in class_idx))
+    return ("_" + "_".join(parts)) if parts else ""
 
 
 def main() -> int:
@@ -108,8 +163,27 @@ def main() -> int:
         default=None,
         help="camada: conv3_3/conv4_3/conv5_3 ou 'features.15' etc",
     )
+    parser.add_argument(
+        "--images",
+        nargs="+",
+        default=None,
+        metavar="TOKEN",
+        help="imagens explicitas: id (95786), nome (000000015278.jpg) ou caminho",
+    )
+    parser.add_argument(
+        "--classes",
+        default=None,
+        help="duas classes do ImageNet, uma por objeto: cup,vase (exige --images)",
+    )
     parser.add_argument("--out", type=Path, default=OUT_DIR)
     args = parser.parse_args()
+
+    try:
+        class_idx = parse_classes(args.classes, imagenet_labels())
+    except ValueError as error:
+        parser.error(str(error))
+    if class_idx is not None and not args.images:
+        parser.error("--classes so' faz sentido junto com --images")
 
     start = time.perf_counter()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -120,12 +194,18 @@ def main() -> int:
     labels = imagenet_labels()
     coco = CocoVal()
 
-    records = select_records(coco, model, labels, args)
+    try:
+        records = select_records(coco, model, labels, args)
+    except ValueError as error:
+        print(f"erro: {error}")
+        return 1
     if not records:
         print("Nenhuma imagem candidata: verifique scripts/00_download.py e --n")
         return 1
 
-    print(f"imagens: {len(records)} | camada: {layer or 'ultima conv'}")
+    print(f"imagens: {len(records)} | camada: {layer or 'ultima conv'}"
+          + (f" | classes: {','.join(labels[i] for i in class_idx)}"
+             if class_idx else ""))
     print()
 
     rows, titles, rhos = [], [], []
@@ -133,14 +213,18 @@ def main() -> int:
 
     for record in records:
         image_rgb = tensor_to_numpy(denormalize(record["x"]))
-        classes = [
-            (int(record["indices"][slot]), float(record["probs"][slot]))
-            for slot in (0, 1)
-        ]
+        if class_idx:
+            probs = torch.softmax(model(record["x"])[0], dim=0)
+            classes = [(index, float(probs[index])) for index in class_idx]
+        else:
+            classes = [
+                (int(record["indices"][slot]), float(record["probs"][slot]))
+                for slot in (0, 1)
+            ]
 
         maps = []
-        for class_idx, _ in classes:
-            heatmap, _ = gradcam(model, record["x"], class_idx, layer=layer)
+        for class_index, _ in classes:
+            heatmap, _ = gradcam(model, record["x"], class_index, layer=layer)
             map_shape = tuple(heatmap.shape)
             maps.append(heatmap)
 
@@ -153,18 +237,23 @@ def main() -> int:
         ]
         rows.append(cells)
         (a_idx, a_prob), (b_idx, b_prob) = classes
+        ident = record["image_id"] if record["image_id"] is not None else record["path"].name
         titles.append(
-            f"gt={record['truth']} | A={labels[a_idx]} ({a_prob:.0%}) | "
+            f"gt={record['truth'] or '?'} | A={labels[a_idx]} ({a_prob:.0%}) | "
             f"B={labels[b_idx]} ({b_prob:.0%})"
         )
-        print(f"[{record['image_id']}] {titles[-1]}  "
-              f"spearman(A,B)={rho:+.3f}")
+        print(f"[{ident}] {titles[-1]}  spearman(A,B)={rho:+.3f}")
 
     valid = [rho for rho in rhos if rho == rho]
     mean_rho = sum(valid) / len(valid) if valid else float("nan")
     print()
-    print(f"spearman entre classes: media {mean_rho:+.3f} (n={len(valid)}) "
-          f"| Fase 3: guided +0.999, vanilla +0.642")
+    if class_idx:
+        print(f"spearman entre {labels[class_idx[0]]} e {labels[class_idx[1]]}: "
+              f"media {mean_rho:+.3f} (n={len(valid)})")
+        print("pareamento customizado: nao comparavel ao 0,760 da amostra top-1/top-2")
+    else:
+        print(f"spearman entre classes: media {mean_rho:+.3f} (n={len(valid)}) "
+              f"| Fase 3: guided +0.999, vanilla +0.642")
     print(f"resolucao do mapa: {map_shape}")
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -176,7 +265,8 @@ def main() -> int:
             f"{args.model} | Fase 4 | Grad-CAM ({layer or 'ultima conv'})"
         ),
     )
-    path = args.out / f"04_gradcam_{args.model}{layer_suffix(args.layer, layer)}.png"
+    suffix = layer_suffix(args.layer, layer) + tag_suffix(args, records, class_idx, labels)
+    path = args.out / f"04_gradcam_{args.model}{suffix}.png"
     fig.savefig(path, bbox_inches="tight")
     print(f"salvo: {path}")
     print(f"\ntempo total: {time.perf_counter() - start:.1f} s")

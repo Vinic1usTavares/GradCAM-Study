@@ -9,6 +9,7 @@ Decisões relevantes (ver plans/general_plan.md, secao 2.1):
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import torch
@@ -108,6 +109,46 @@ def imagenet_labels() -> list[str]:
     from torchvision.models import ResNet18_Weights
 
     return ResNet18_Weights.DEFAULT.meta["categories"]
+
+
+def resolve_class(token: str | int, labels: Sequence[str] | None = None) -> int:
+    """Converte um token de `--classes` em indice do ImageNet.
+
+    Aceita indice (`620`), rotulo exato (`laptop`) e rotulo sem diferenciar
+    maiusculas. Nome ambiguo (`dog`) levanta `ValueError` listando os
+    candidatos: escolher o primeiro silenciosamente daria a figura certa pelo
+    motivo errado, e o titulo mostraria outra classe.
+    """
+    labels = imagenet_labels() if labels is None else list(labels)
+
+    if isinstance(token, int):
+        if not 0 <= token < len(labels):
+            raise ValueError(f"indice fora do ImageNet-1k: {token}")
+        return token
+
+    text = token.strip()
+    if text.isdigit():
+        return resolve_class(int(text), labels)
+
+    exact = [i for i, name in enumerate(labels) if name == text]
+    if len(exact) == 1:
+        return exact[0]
+
+    folded = [i for i, name in enumerate(labels) if name.lower() == text.lower()]
+    if len(folded) == 1:
+        return folded[0]
+
+    partial = [i for i, name in enumerate(labels) if text.lower() in name.lower()]
+    candidates = folded or exact or partial
+    if len(candidates) == 1:
+        return candidates[0]
+
+    if not candidates:
+        raise ValueError(f"classe desconhecida: {token!r} (nao esta no ImageNet-1k)")
+
+    shown = ", ".join(f"{i}={labels[i]}" for i in candidates[:8])
+    more = "" if len(candidates) <= 8 else f" (+{len(candidates) - 8})"
+    raise ValueError(f"classe ambigua: {token!r} casa com {shown}{more}")
 
 
 @torch.no_grad()

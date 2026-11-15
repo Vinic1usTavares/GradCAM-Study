@@ -63,6 +63,7 @@ class CocoVal:
         raw = json.loads(annotations.read_text(encoding="utf-8"))
         self.categories = {c["id"]: c["name"] for c in raw["categories"]}
         self.images = {img["id"]: img for img in raw["images"]}
+        self._file_name_index: dict[str, int] | None = None
 
         # image_id -> category_name -> [Box]
         self.boxes: dict[int, dict[str, list[Box]]] = {i: {} for i in self.images}
@@ -82,6 +83,53 @@ class CocoVal:
 
     def image_path(self, image_id: int) -> Path:
         return self.images_dir / self.images[image_id]["file_name"]
+
+    @property
+    def file_name_index(self) -> dict[str, int]:
+        """`file_name` -> `image_id`, construido na primeira chamada.
+
+        O indice direto (`images`) e' por id; para aceitar `--images
+        000000015278.jpg` e' preciso o caminho inverso.
+        """
+        if self._file_name_index is None:
+            self._file_name_index = {
+                meta["file_name"]: image_id for image_id, meta in self.images.items()
+            }
+        return self._file_name_index
+
+    def resolve(self, token: str) -> tuple[int | None, Path]:
+        """Resolve um token de `--images` em `(image_id | None, caminho)`.
+
+        Aceita, nesta ordem:
+
+        1. caminho existente — `data/coco/val2017/000000015278.jpg` ou uma foto
+           qualquer. Se o nome estiver no COCO, o id e' recuperado (mantem a
+           anotacao); se nao, `image_id` e' `None` (imagem solta, sem `gt`).
+        2. id numerico — `15278`.
+        3. nome de arquivo — `000000015278.jpg`.
+
+        Token que nao resolve levanta `ValueError`: um `--images` silenciosamente
+        ignorado produziria figura errada sem ninguem ver.
+        """
+        path = Path(token)
+        if path.exists():
+            return self.file_name_index.get(path.name), path
+
+        if token.isdigit():
+            image_id = int(token)
+            if image_id not in self.images:
+                raise ValueError(
+                    f"id {image_id} nao esta no val2017 ({len(self.images)} imagens)"
+                )
+            return image_id, self.image_path(image_id)
+
+        image_id = self.file_name_index.get(path.name)
+        if image_id is None:
+            raise ValueError(
+                f"imagem nao encontrada: {token!r}. Use um id (15278), um nome "
+                f"do val2017 (000000015278.jpg) ou um caminho de arquivo."
+            )
+        return image_id, self.image_path(image_id)
 
     def load_image(self, image_id: int) -> Image.Image:
         return Image.open(self.image_path(image_id)).convert("RGB")
