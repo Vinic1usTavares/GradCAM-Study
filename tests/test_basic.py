@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from gradcam.data import ANNOTATIONS, CocoVal
 from gradcam.models import denormalize, preprocess
-from gradcam.viz import normalize, overlay, to_rgb, upsample
+from gradcam.viz import figure_grid, gray_rgb, normalize, overlay, to_rgb, upsample
 
 
 def test_preprocess_shape_and_range():
@@ -54,6 +54,31 @@ def test_to_rgb_and_overlay_shapes():
     image = torch.randint(0, 255, (28, 28, 3), dtype=torch.uint8).numpy()
     blended = overlay(image, heatmap)
     assert blended.shape == (28, 28, 3)
+
+
+def test_gray_rgb_peaks_white_and_keeps_shape():
+    heatmap = torch.zeros(9, 9)
+    heatmap[4, 4] = 2.0
+    rgb = gray_rgb(heatmap)
+    assert rgb.shape == (9, 9, 3) and rgb.dtype.name == "uint8"
+    assert rgb[4, 4].tolist() == [255, 255, 255]
+    assert rgb[0, 0].tolist() == [0, 0, 0]
+
+
+def test_figure_grid_one_axis_per_cell():
+    import matplotlib.pyplot as plt
+
+    cell = torch.zeros(4, 4, 3, dtype=torch.uint8).numpy()
+    fig = figure_grid(
+        [[cell, cell, cell], [cell, cell, cell]],
+        col_titles=("a", "b", "c"),
+        row_titles=("linha 1", "linha 2"),
+        suptitle="teste",
+    )
+    assert len(fig.axes) == 6
+    assert fig.axes[0].get_title() == "a"
+    assert fig.axes[3].get_title() == ""  # titulo so' na primeira linha
+    plt.close(fig)
 
 
 @pytest.mark.skipif(not ANNOTATIONS.exists(), reason="COCO nao baixado")
