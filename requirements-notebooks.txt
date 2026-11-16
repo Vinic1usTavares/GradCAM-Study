@@ -1,0 +1,6 @@
+jupyterlab
+ipykernel
+nbclient
+nbformat
+nbconvert[webpdf]
+playwright
