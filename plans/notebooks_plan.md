@@ -334,4 +334,7 @@ Nesta ordem:
 | 2026-11-15 | `9b55397` | pós-Fase 3: corrige a magnitude de `vanilla` (a regra estava "passa sempre"; agora `x > 0`, pico ~0,3 em vez de 10⁵–10⁶) e preenche a punchline de `02_relus` com `class_discrimination.json` (0,999 / 0,642, n=16) |
 | 2026-11-15 | `3d7b30b` | pós-Fase 4: `04_gradcam` liberado (script + figura prontos, mapa 14×14, rho 0,760); ablacao ReLU sai do notebook e vai para a Fase 9 (a figura quase não muda com a escala de exibição); `Spearman` calculado em célula em vez de JSON novo |
 | 2026-11-15 | `140087a` | `--images`/`--classes` permitem fixar imagem e classes; `04_gradcam` passa a fechar com a figura de dois objetos (`95786`, `cup`/`vase`, rho 0,467), que é a que cumpre o critério de aceite. A figura de 4 imagens vira contraponto (top-2 = sinônimo do objeto dominante em 23 de 26 casos) |
+| 2026-11-16 | `bc1d7a1` | pós-Fase 5: `03_cam` e `05_equivalencia` liberados; a equivalência passa a ser medida na **mesma camada** (`layer4`), rho 1,000000 e diferença 5,7e-06 |
+| 2026-11-16 | `489224b` | pós-Fase 6: `06_guided` deixa de reimplementar a composição e chama `gradcam.guided`; figura e zoom das listras vêm do script |
+| 2026-11-16 | `b850211` | pós-Fase 7: `07_counterfactual` deixa de ser placeholder — figura ao vivo mais `counterfactual.json` (pico desloca 9,5/9,2 células de 14) |
 

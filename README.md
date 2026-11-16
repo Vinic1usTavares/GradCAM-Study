@@ -70,12 +70,12 @@ scripts/           um executável por experimento
 | 4. Grad-CAM | **concluída** — mapa 14×14, Spearman entre classes 0,760 |
 | 5. CAM vs Grad-CAM (§3.1) | **concluída** — `Spearman` 1,000000 na mesma camada, diferença 5,7×10⁻⁶ |
 | 6. Guided Grad-CAM | **concluída** — detalhe 1,13–1,27 (≈ Guided Backprop, ~20× o CAM), top5% na box certa 0,80–0,96 em 3 dos 4 casos |
-| 7. Counterfactual | pendente |
+| 7. Counterfactual | **concluída** — pico desloca 9,5 (`cup`) e 9,2 (`vase`) células de 14; rho −0,60/−0,55 |
 | 8. Pointing game + oclusão | pendente |
 | 9. Ablações | pendente |
 | 10. Sanity checks (Adebayo) | pendente |
 
-Figuras das Fases 1–6 em `results/figures/`; métricas em `results/metrics/`
+Figuras das Fases 1–7 em `results/figures/`; métricas em `results/metrics/`
 (`--overlay` troca cinza por jet):
 
 ```powershell
@@ -84,6 +84,7 @@ Figuras das Fases 1–6 em `results/figures/`; métricas em `results/metrics/`
 .\.venv\Scripts\python.exe scripts\04_gradcam.py               # ~18 s em CPU
 .\.venv\Scripts\python.exe scripts\05_cam_vs_gradcam.py        # ~5 s em CPU
 .\.venv\Scripts\python.exe scripts\06_guided_gradcam.py        # ~13 s em CPU
+.\.venv\Scripts\python.exe scripts\07_counterfactual.py        # ~8 s em CPU (2 classes)
 
 # figura de dois objetos: uma classe por objeto (5 s)
 .\.venv\Scripts\python.exe scripts\04_gradcam.py --images 95786 --classes cup,vase
@@ -148,6 +149,15 @@ estante/cadeira localiza) estão registrados no plano. Notebook:
 `notebooks/06_guided.ipynb`, que chama `gradcam/guided.py` e serve para ver a
 composição, não para reimplementá-la.
 
+A Fase 7 nega `α` em (1) antes do ReLU de (2) e mede o deslocamento do mapa para
+a evidência contrária. Na imagem de dois objetos (`95786`), o pico sai do objeto
+da classe e anda **9,5 células** (`cup`) e **9,2** (`vase`) num mapa 14×14 (152 e
+147 px na entrada); o `Spearman` entre a favor e a contra é −0,60 e −0,55,
+negativo por construção. O contrafactual **não** é o mapa da "outra classe": para
+`vase` ele acende a região do segundo copo; para `cup`, bordas e fundo. É o que
+se pode afirmar sem vender mais do que a medida mostra. Notebook:
+`notebooks/07_counterfactual.ipynb` (bônus, primeiro item da lista de corte).
+
 
 ## Reprodutibilidade
 
@@ -167,9 +177,10 @@ Registradas no `plans/general_plan.md`, seção 0. Resumo: VGG-16 em CPU
 (~330 ms/forward, ~1 s/backward), top-1 de 63% em 27 imagens do COCO val2017
 restritas às 18 categorias que são classes ImageNet verbatim; não-discriminação
 de classe de 0,999 (deconv/guided) e 0,642 (vanilla) em 16 imagens; equivalência
-CAM = Z · Grad-CAM exata (1,000000, 5,7×10⁻⁶) na mesma camada; e Guided Grad-CAM
+CAM = Z · Grad-CAM exata (1,000000, 5,7×10⁻⁶) na mesma camada; Guided Grad-CAM
 com detalhe de 1,13–1,27 (≈ Guided Backprop) mantendo 0,80–0,96 do top5% na box
-de ground truth certa em 3 dos 4 casos.
+de ground truth certa em 3 dos 4 casos; e contrafactual deslocando o pico 9,5 e
+9,2 células de 14 em `95786`.
 
 Decisão de ambiente: **CPU**, não GPU. Não existe wheel CUDA do torch 2.15 para
 Python 3.14 (os índices param em 2.14.1+cu126), e ~330 ms/forward é suficiente

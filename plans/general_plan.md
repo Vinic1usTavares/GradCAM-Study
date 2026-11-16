@@ -61,7 +61,7 @@ alinhado aos eixos, nenhuma box cortada). Ver `gradcam/models.py:preprocess`.
 | Mediana / pico | 3,5% – 5,3% | 4,8% – 7,2% | 0,5% – 1,5% |
 | Quantil 99% / pico | 0,24 – 0,35 | 0,27 – 0,37 | 0,13 – 0,16 |
 
-`pytest`: 30 passed (etapas 1–3).
+`pytest`: 84 passed (Fases 0–7).
 
 Consequências registradas no código:
 
@@ -313,6 +313,37 @@ imagem por medida — e não por intuição — é parte do método. A triagem r
 val2017 com 2–3 objetos grandes e separados (lado ≥ 120 px, área ≥ 3% da imagem,
 centros a ≥ 30% da diagonal — 326 imagens) e ficou com 4 casos.
 
+### Medições da etapa 7
+
+`scripts/07_counterfactual.py`, VGG-16, imagem `95786` (copo + vaso), camada
+`features.29`, ~8 s. Duas colunas de mapa por classe: Grad-CAM (a favor) e o
+mesmo mapa com `alpha` negado em (1) antes do ReLU de (2) (contra).
+
+| Classe | prob | pico a favor | pico contra | deslocamento | Spearman(a favor, contra) |
+|---|---|---|---|---|---|
+| cup | 21,8% | (10,9) | (13,0) | 9,5 células (152 px) | −0,605 |
+| vase | 1,3% | (2,9) | (11,7) | 9,2 células (147 px) | −0,546 |
+
+O Spearman negativo é estrutural — negar `alpha` inverte o sinal da combinação
+—, então ele **não** é a métrica de aceite: o critério é o deslocamento. Nos
+dois casos o pico sai do objeto da classe e cai a ~2/3 do lado do mapa
+(9,5 e 9,2 células de 14).
+
+Leitura honesta do que "evidência contrária" significa: o contrafactual não é o
+mapa da "outra classe" e não precisa acender o vaso para `cup`. Ele acende o que
+**reduz** `y^c` — no caso do `cup`, bordas e o fundo da cena; no do `vase`, a
+região do segundo copo. O critério do plano ("o mapa desloca para a evidência
+contrária") é cumprido no deslocamento; a identificação do objeto vizinho é
+qualitativa e vale para `vase`, não para `cup`, e isso fica registrado.
+
+Controles de implementação cobertos por teste (`tests/test_counterfactual.py`,
+4 testes): sem ReLU, o contrafactual é **exatamente** o negativo do Grad-CAM
+(`cf == -gc`), o que fixa a definição; o hook de ativação é removido entre
+chamadas; e `class_idx=None` continua usando o `argmax` nos dois métodos. A
+derivação foi fatorada em `core._class_weights`, então `gradcam` e
+`counterfactual` não podem divergir na conta de (1).
+
+
 ### Restrição descoberta: COCO × ImageNet
 
 Apenas **18** das 80 categorias do COCO são classes ImageNet verbatim
@@ -463,7 +494,7 @@ MapFn = Callable[[nn.Module, torch.Tensor, int], torch.Tensor]   # (modelo, entr
 | **4** | Grad-CAM (Eqs. 1–2) | mapa de "cat" no gato e de "dog" no cachorro, na mesma foto — **cumprido em `95786` com `--classes cup,vase`: `cup` acende o copo, `vase` acende o vaso, Spearman 0,467**. Proxy no pareamento top-1/top-2: 0,760 contra 0,999 de deconv/guided; controle entre imagens +0,009–0,211 |
 | **5** | CAM em ResNet18 (`conv → GAP → fc`) e equivalência numérica com Grad-CAM | Spearman > 0,9 na mesma camada; valida a prova da §3.1 — **medido: Spearman 1,000000 e max abs(Z·Grad-CAM − CAM) 5,7 × 10⁻⁶**. Sem fixar a camada, os dois métodos capturam tensores diferentes e o número cai para 0,987 (ver seção 0) |
 | **6** | Guided Grad-CAM = Fase 4 ⊙ Fase 2 | detalhe fino (listras) sem perder discriminação de classe — **medido: detalhe 1,13–1,27, em cima do Guided Backprop (1,14–1,24) e ~20× o CAM (0,05–0,06); top5% na box certa 0,80–0,96 em 3 dos 4 casos** (`broccoli` em 0,63 é o pior). Ressalva medida: o rho entre classes **sobe** nos quatro casos, porque o termo de detalhe é quase invariante à classe |
-| **7** | Counterfactual (negar o gradiente em (1)) | mapa desloca para a evidência contrária |
+| **7** | Counterfactual (negar o gradiente em (1)) | mapa desloca para a evidência contrária — **cumprido no deslocamento: pico sai do objeto em `95786` (`cup` 9,5 e `vase` 9,2 células de 14); acende evidência complementar, não necessariamente o objeto vizinho** |
 | **8** | Pointing game + Spearman vs oclusão, **todos os métodos na mesma bateria** | tabela comparável em ordenação à Tabela 1/2 do paper |
 | **9** | Ablações (ReLU on/off, GAP vs GMP, camada conv3_3/4_3/5_3, gradiente vanilla/guided/deconv) | reproduzir a **direção** da Tabela 3 |
 | **10** | Sanity checks (cascade randomization, Adebayo et al.) | queda monotônica da correlação ao randomizar camadas de cima para baixo |
