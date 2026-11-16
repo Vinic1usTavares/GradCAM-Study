@@ -73,9 +73,9 @@ scripts/           um executável por experimento
 | 7. Counterfactual | **concluída** — pico desloca 9,5 (`cup`) e 9,2 (`vase`) células de 14; rho −0,60/−0,55 |
 | 8. Pointing game + oclusão | pendente |
 | 9. Ablações | pendente |
-| 10. Sanity checks (Adebayo) | pendente |
+| 10. Sanity checks (Adebayo) | **concluída** — Grad-CAM perde metade da correlação com só a última camada randomizada (`k=1`); GB só em `k=16` |
 
-Figuras das Fases 1–7 em `results/figures/`; métricas em `results/metrics/`
+Figuras das Fases 1–7 e 10 em `results/figures/`; métricas em `results/metrics/`
 (`--overlay` troca cinza por jet):
 
 ```powershell
@@ -85,6 +85,7 @@ Figuras das Fases 1–7 em `results/figures/`; métricas em `results/metrics/`
 .\.venv\Scripts\python.exe scripts\05_cam_vs_gradcam.py        # ~5 s em CPU
 .\.venv\Scripts\python.exe scripts\06_guided_gradcam.py        # ~13 s em CPU
 .\.venv\Scripts\python.exe scripts\07_counterfactual.py        # ~8 s em CPU (2 classes)
+.\.venv\Scripts\python.exe scripts\11_sanity_checks.py         # ~3 min em CPU (5 métodos)
 
 # figura de dois objetos: uma classe por objeto (5 s)
 .\.venv\Scripts\python.exe scripts\04_gradcam.py --images 95786 --classes cup,vase
@@ -158,6 +159,22 @@ negativo por construção. O contrafactual **não** é o mapa da "outra classe":
 se pode afirmar sem vender mais do que a medida mostra. Notebook:
 `notebooks/07_counterfactual.ipynb` (bônus, primeiro item da lista de corte).
 
+A Fase 10 faz o teste de Adebayo et al. (2018): se o mapa não muda quando os pesos
+mudam, ele não explica o modelo. `11_sanity_checks.py` randomiza os pesos de uma
+camada por vez, **de cima para baixo** (`classifier.6` → `features.0`, 16 módulos),
+de forma cumulativa, recalculando o mapa com a mesma imagem e a mesma classe; o
+`|Spearman|` contra o original é a curva. O resultado tem duas partes. Com só a
+última camada (`classifier.6`, o `Linear` final) reamostrada (`k = 1`), Grad-CAM
+cai para 0,250 e Guided Grad-CAM para 0,240, enquanto as três saliências por
+gradiente ficam em **1,000** — elas não usam a camada final. No fim do cascade
+(`k = 16`) a ordem é GB 0,225 > deconv 0,144 > Guided Grad-CAM 0,064 > vanilla
+0,014 > Grad-CAM 0,010: o que sobrevive no Guided Backprop é a borda da
+**entrada**, não a rede. Medido em duas imagens (`22892` `koala`, `95786`
+`coffee mug`), semente 0, ~188 s em CPU. Ressalva registrada: a curva do GB cai
+menos que a figura do artigo sugere, provavelmente porque a reinicialização
+Kaiming destrói a estrutura de borda das primeiras convoluções. A *data
+randomization* do artigo exige retreinar o modelo e não é reproduzida.
+
 
 ## Reprodutibilidade
 
@@ -180,7 +197,10 @@ de classe de 0,999 (deconv/guided) e 0,642 (vanilla) em 16 imagens; equivalênci
 CAM = Z · Grad-CAM exata (1,000000, 5,7×10⁻⁶) na mesma camada; Guided Grad-CAM
 com detalhe de 1,13–1,27 (≈ Guided Backprop) mantendo 0,80–0,96 do top5% na box
 de ground truth certa em 3 dos 4 casos; e contrafactual deslocando o pico 9,5 e
-9,2 células de 14 em `95786`.
+9,2 células de 14 em `95786`. No cascade de Adebayo, o Grad-CAM perde metade da
+correlação com só a última camada reamostrada (`k = 1`, 0,250) e chega a 0,010 no
+fim, enquanto o Guided Backprop fica em 1,000 até `k = 4` e só cai para 0,225 em
+`k = 16`.
 
 Decisão de ambiente: **CPU**, não GPU. Não existe wheel CUDA do torch 2.15 para
 Python 3.14 (os índices param em 2.14.1+cu126), e ~330 ms/forward é suficiente

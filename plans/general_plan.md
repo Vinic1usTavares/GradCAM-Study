@@ -61,7 +61,7 @@ alinhado aos eixos, nenhuma box cortada). Ver `gradcam/models.py:preprocess`.
 | Mediana / pico | 3,5% – 5,3% | 4,8% – 7,2% | 0,5% – 1,5% |
 | Quantil 99% / pico | 0,24 – 0,35 | 0,27 – 0,37 | 0,13 – 0,16 |
 
-`pytest`: 84 passed (Fases 0–7).
+`pytest`: 93 passed (Fases 0–10).
 
 Consequências registradas no código:
 
@@ -344,6 +344,74 @@ derivação foi fatorada em `core._class_weights`, então `gradcam` e
 `counterfactual` não podem divergir na conta de (1).
 
 
+### Medições da etapa 10
+
+`scripts/11_sanity_checks.py`, VGG-16, imagens `22892` (`koala`, 49,8%) e `95786`
+(`coffee mug`, 47,0%), camada final `features.29`, ~188 s. Protocolo: randomizar
+os pesos de uma camada por vez de cima para baixo (16 módulos com parâmetros,
+`classifier.6` → `features.0`), cumulativo, semente 0; recalcular o mapa com a
+**mesma imagem e a mesma classe**; medir `|Spearman|` contra o mapa original.
+
+| Método | k=0 | k=1 | k=4 | k=9 | k=12 | k=16 | 1º k com \|rho\| < 0,5 |
+|---|---|---|---|---|---|---|---|
+| vanilla | 1,000 | 0,435 | 0,390 | 0,270 | 0,185 | **0,014** | 1 |
+| deconv | 1,000 | 1,000 | 0,985 | 0,820 | 0,415 | **0,144** | 12 |
+| guided (GB) | 1,000 | 1,000 | 0,985 | 0,885 | 0,730 | **0,225** | 16 |
+| Grad-CAM | 1,000 | 0,250 | 0,055 | 0,055 | 0,045 | **0,010** | 1 |
+| Guided Grad-CAM | 1,000 | 0,240 | 0,240 | 0,110 | 0,210 | **0,064** | 1 |
+
+O módulo é a métrica de Adebayo et al., não uma conveniência: com o modelo
+randomizado o gradiente pode **inverter** e o Spearman com sinal oscila em torno
+de zero (`1,00 → −0,31 → −0,26 → +0,11` no primeiro ensaio). O que se mede é se a
+**estrutura** do mapa sobreviveu, e o JSON guarda os dois (`spearman` e
+`abs_spearman`).
+
+**O resultado tem duas partes, e a segunda contraria o senso comum.**
+
+1. **O que depende do classificador morre no primeiro passo.** Com só a última
+   camada (`classifier.6`, o `Linear` final) reamostrada (`k = 1`), Grad-CAM cai
+   para 0,31 e 0,19 nas duas imagens (média 0,25), e o Guided Grad-CAM para 0,02 e
+   0,46 — o produto herda a fragilidade do Grad-CAM. As três saliências por
+   gradiente ficam em **1,000**: elas não usam a camada final.
+2. **O que sobrevive é a borda da entrada.** `guided` e `deconv` só perdem metade
+   da correlação em `k = 16` e `k = 12`, quando as primeiras convoluções também
+   já são ruído. Ainda assim **caem** (0,225 e 0,144 no fim): o mapa do Guided
+   Backprop é quase insensível aos pesos *no começo* do cascade, não imune.
+
+Contra o número de Adebayo et al.: a ordem que medimos é a mesma (GB > deconv >
+vanilla > Grad-CAM em todo passo intermediário), mas a curva do GB não fica
+"chapada" até o fim como a figura do artigo sugere. A diferença provável é a
+inicialização: reamostramos todos os filtros com Kaiming, o que destrói a
+estrutura de borda das primeiras camadas; o artigo preserva mais do modelo
+original em cada passo. Registrado como divergência, não como erro.
+
+**Monotonicidade.** O critério do plano é "queda monotônica"; `vanilla`,
+`deconv` e `guided` cumprem. `Grad-CAM` e `Guided Grad-CAM` **não** cumprem
+estritamente, e isso é informação, não falha: os dois zeram em `k ≤ 4`, e o que
+sobra depois é ruído em torno de 0 que oscila ±0,1 (`0,11 → 0,18` no Grad-CAM).
+Aplicar monotonicidade estrita a uma curva que já chegou a zero mede ruído. O JSON
+guarda o flag medido (`monotonic_all_images: false`) e a coluna "1º k com
+`|rho| < 0,5`", que é o resumo robusto: **Grad-CAM e Guided Grad-CAM perdem metade
+em `k = 1`; GB só em `k = 16`.**
+
+Escopo declarado: a *data randomization* do artigo exige **retreinar** o modelo
+com rótulos embaralhados; não há treino neste repositório, então só a randomização
+de parâmetros foi reproduzida.
+
+Nota de leitura da figura (`results/figures/11_sanity_maps_vgg16.png`): cada mapa é
+normalizado **para exibição**, então o mapa randomizado do Grad-CAM ainda aparece
+colorido mesmo com `rho = 0,010` — a cor é ruído ampliado, e quem mede a estrutura é
+o `rho`. No fim do cascade o Grad-CAM degenera num mapa constante e o `Spearman`
+deixa de estar definido; por isso a demonstração ao vivo do notebook mostra o
+primeiro passo (`classifier.6`), não o último.
+
+Controles de implementação cobertos por teste (`tests/test_sanity.py`, 9 testes):
+ordem topo→base; semente determinística; cascade cumulativo (não sorteia modelo
+novo a cada passo); BatchNorm não é zerado (o `weight` 1-D volta a 1); a classe
+fica fixa em todos os passos; cutoff além do número de módulos levanta erro; e
+`abs_spearman == |spearman|` em todos os passos.
+
+
 ### Restrição descoberta: COCO × ImageNet
 
 Apenas **18** das 80 categorias do COCO são classes ImageNet verbatim
@@ -373,6 +441,7 @@ GradCAM-Study/
 │   ├── guided.py          # guided_gradcam = gradcam ⊙ guided
 │   ├── viz.py             # colormap, overlay, grade de figuras
 │   ├── metrics.py         # MapFn plugável: pointing game, Spearman vs oclusão
+│   ├── sanity.py          # Fase 10: cascade de randomização de parâmetros
 │   └── data.py            # COCO val2017: leitura de imagens e boxes
 ├── scripts/
 │   ├── 01_forward_sanity.py
@@ -497,7 +566,7 @@ MapFn = Callable[[nn.Module, torch.Tensor, int], torch.Tensor]   # (modelo, entr
 | **7** | Counterfactual (negar o gradiente em (1)) | mapa desloca para a evidência contrária — **cumprido no deslocamento: pico sai do objeto em `95786` (`cup` 9,5 e `vase` 9,2 células de 14); acende evidência complementar, não necessariamente o objeto vizinho** |
 | **8** | Pointing game + Spearman vs oclusão, **todos os métodos na mesma bateria** | tabela comparável em ordenação à Tabela 1/2 do paper |
 | **9** | Ablações (ReLU on/off, GAP vs GMP, camada conv3_3/4_3/5_3, gradiente vanilla/guided/deconv) | reproduzir a **direção** da Tabela 3 |
-| **10** | Sanity checks (cascade randomization, Adebayo et al.) | queda monotônica da correlação ao randomizar camadas de cima para baixo |
+| **10** | Sanity checks (cascade randomization, Adebayo et al.) | queda monotônica da correlação ao randomizar camadas de cima para baixo — **cumprido em `vanilla`/`deconv`/`guided`; `Grad-CAM` e `Guided Grad-CAM` zeram em `k ≤ 4` (metade já em `k = 1`) e o resíduo oscila ±0,1, então o critério estrito não se aplica a eles** |
 | **11** | README com tabela "paper vs. nosso número" + material do seminário | — |
 
 ---
