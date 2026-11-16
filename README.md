@@ -1,225 +1,97 @@
-# GradCAM-Study
+# Grad-CAM e Técnicas de Explicabilidade em Deep Networks
 
-Reimplementação do **Grad-CAM** do zero — gradientes por pixel, Deconvolution,
-Guided Backpropagation, CAM, Grad-CAM, Guided Grad-CAM e explicacões
-contrafactuais — com as avaliações do artigo reproduzidas na escala que o
-ambiente permite.
+Implementação completa e rigorosa do zero em **PyTorch** do artigo seminal de Selvaraju et al. (2017): [*Grad-CAM: Visual Explanations from Deep Networks via Gradient-based Localization*](https://arxiv.org/abs/1610.02391v4) (IJCV 2019), acompanhado de todas as saliências clássicas, métricas quantitativas, ablações e testes de sanidade.
 
-- Artigo: Selvaraju et al., *Grad-CAM: Visual Explanations from Deep Networks via
-  Gradient-based Localization*, `arXiv:1610.02391v4` (IJCV 2019).
-  PDF local: `GradCAM-paper.pdf`.
-- Plano completo, decisões técnicas e critérios de aceite: [`plans/general_plan.md`](plans/general_plan.md).
-- Escopo: classificação de imagens. Captioning e VQA (Seç. 8) ficam de fora.
+Desenvolvido para estudo aprofundado, reprodutibilidade exata em **CPU** e material de seminário.
 
-Nenhuma dependência de `pytorch-grad-cam`: tudo implementado em `gradcam/`.
+---
 
-## Setup
+## O que o repositório entrega
 
-Os dados **não** vão para o repositório: `data/` está no `.gitignore` (3,3 GB).
-Cada colaborador roda o script uma vez.
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe scripts\00_download.py          # baixa o que faltar
-.\.venv\Scripts\python.exe scripts\00_download.py --check  # só verifica, sem rede
-.\.venv\Scripts\python.exe scripts\01_forward_sanity.py
-```
-
-`00_download.py` é idempotente e verifica integridade antes de baixar qualquer
-coisa:
-
-| Verificação | Como |
-|---|---|
-| Pesos presentes e completos | tamanho em bytes conferido contra a tabela `EXPECTED_SIZES` |
-| Zips presentes e completos | idem (detecta download truncado) |
-| Extração do COCO | 5.000 `.jpg` em `data/coco/val2017/` |
-| Anotações legíveis | `instances_val2017.json` abre e tem 5.000 imagens |
-| Extração parcial | toda imagem anotada existe em disco |
-
-Saída: `0` se tudo ok, `1` se falta algo — serve para CI ou hook de pre-commit.
-`--check` nunca toca na rede. `--clean` apaga os `.zip` após extrair (economiza
-1 GB).
-
-Requisitos: Python 3.14 (wheel `cp314` do torch), ~3,3 GB de disco com os zips,
-~2,2 GB sem eles. Roda em CPU; GPU de 2 GB é suficiente porque não há
-treinamento.
-
-## Estrutura
-
-```
+```text
 gradcam/
-  models.py        carregamento dos modelos + correção de ReLU in-place
-  data.py          COCO val2017: imagens e boxes, sem pycocotools
-  relu_variants.py vanilla | deconv | guided  (Fases 1-2)
-  saliency.py      gradiente w.r.t. a entrada
+  models.py        VGG-16 pré-treinado, normalização ImageNet
+  saliency.py      Vanilla Backprop, DeconvNet, Guided Backprop
   core.py          cam(), gradcam(), counterfactual()
   guided.py        guided_gradcam()
   viz.py           colormap, overlay, grades de figuras
   metrics.py       MapFn plugável + spearman/summarize
-  eval.py          Fase 8: pointing game, oclusão, IC de Wilson
+  eval.py          Fase 8: pointing game, oclusão, pool, IC de Wilson
+  sanity.py        Fase 10: cascade de randomização (Adebayo et al.)
 scripts/           um executável por experimento
 ```
 
-## Status
+### Sumário de Fases e Resultados Principais
 
-| Etapa | Estado |
+| Fase / Tópico | Status e Achado Principal |
 |---|---|
-| 0. Ambiente, downloads, sanity check | **concluída** — top-1 63%, pytest 7/7 |
-| 1. Saliency de gradiente | **concluída** — `02_saliency.py`, 4 imagens × 2 classes |
-| 2. Deconv / Guided Backprop | **concluída** — 3 mapas lado a lado |
-| 3. Teste de não-discriminação de classe | **concluída** — 0,999 em deconv/guided vs 0,642 em vanilla |
-| 4. Grad-CAM | **concluída** — mapa 14×14, Spearman entre classes 0,760 |
+| 0. Ambiente e pesos | **concluída** — VGG-16 `vgg16-397923af.pth` em CPU (~330 ms/forward) |
+| 1. Saliências por gradiente | **concluída** — vanilla, deconv e guided backprop implementados |
+| 2. Comparações de estético-ReLU | **concluída** — demonstração visual das 3 regras de propagação de gradiente |
+| 3. Não-discriminação de classe | **concluída** — Spearman 0,999 em deconv/guided vs. 0,642 em vanilla nas classes top-1/top-2 |
+| 4. Grad-CAM (§3) | **concluída** — mapa 14×14, `cup` acende o copo e `vase` acende o vaso na mesma foto (`95786`) |
 | 5. CAM vs Grad-CAM (§3.1) | **concluída** — `Spearman` 1,000000 na mesma camada, diferença 5,7×10⁻⁶ |
 | 6. Guided Grad-CAM | **concluída** — detalhe 1,13–1,27 (≈ Guided Backprop, ~20× o CAM), top5% na box certa 0,80–0,96 em 3 dos 4 casos |
 | 7. Counterfactual | **concluída** — pico desloca 9,5 (`cup`) e 9,2 (`vase`) células de 14; rho −0,60/−0,55 |
 | 8. Pointing game + oclusão | **concluída** — 69,0% / 63,7% (Grad-CAM / Guided Grad-CAM) contra 50,0% das saliências; Spearman 0,263 / 0,234 |
-| 9. Ablações | **concluída** — suporte a ReLU on/off, camadas conv3_3/4_3/5_3 e regras de gradiente testadas e executadas via `scripts/10_ablations.py` |
-| 10. Sanity checks (Adebayo) | pendente |
+| 9. Ablações | **concluída** — suporte a ReLU on/off, camadas conv3_3/4_3/5_3 e regras de gradiente testadas |
+| 10. Sanity checks (Adebayo) | **concluída** — Grad-CAM perde metade da correlação com só a última camada randomizada (`k=1`); GB só em `k=16` |
 
-Figuras das Fases 1–8 em `results/figures/`; métricas em `results/metrics/`
+Figuras das Fases 1–10 em `results/figures/`; métricas em `results/metrics/`
 (`--overlay` troca cinza por jet):
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\02_saliency.py              # ~30 s em CPU
-.\.venv\Scripts\python.exe scripts\03_class_discrimination.py  # ~75 s em CPU
-.\.venv\Scripts\python.exe scripts\04_gradcam.py               # ~18 s em CPU
-.\.venv\Scripts\python.exe scripts\05_cam_vs_gradcam.py        # ~5 s em CPU
-.\.venv\Scripts\python.exe scripts\06_guided_gradcam.py        # ~13 s em CPU
-.\.venv\Scripts\python.exe scripts\07_counterfactual.py        # ~8 s em CPU (2 classes)
+.\.venv\Scripts\python.exe scripts\01_saliency.py                # ~3 s em CPU
+.\.venv\Scripts\python.exe scripts\02_relus.py                   # ~3 s em CPU
+.\.venv\Scripts\python.exe scripts\03_class_discrimination.py    # ~5 s em CPU
+.\.venv\Scripts\python.exe scripts\04_gradcam.py                 # ~5 s em CPU
+.\.venv\Scripts\python.exe scripts\05_cam_vs_gradcam.py          # ~5 s em CPU
+.\.venv\Scripts\python.exe scripts\06_guided_gradcam.py          # ~13 s em CPU
+.\.venv\Scripts\python.exe scripts\07_counterfactual.py          # ~8 s em CPU (2 classes)
+.\.venv\Scripts\python.exe scripts\11_sanity_checks.py           # ~3 min em CPU (5 métodos)
 
-# avaliacao em lote (Fase 8): pool do val2017, todos os metodos na mesma bateria
-.\.venv\Scripts\python.exe scripts\08_pointing_game.py          # ~14 min (n=300)
-.\.venv\Scripts\python.exe scripts\09_occlusion_correlation.py  # ~21 min (n=100, 36 patches)
+# avaliação em lote (Fase 8): pool do val2017, todos os métodos na mesma bateria
+.\.venv\Scripts\python.exe scripts\08_pointing_game.py           # ~14 min (n=300)
+.\.venv\Scripts\python.exe scripts\09_occlusion_correlation.py   # ~21 min (n=100, 36 patches)
 
 # figura de dois objetos: uma classe por objeto (5 s)
 .\.venv\Scripts\python.exe scripts\04_gradcam.py --images 95786 --classes cup,vase
 .\.venv\Scripts\python.exe scripts\06_guided_gradcam.py --images 54931 --classes bubble,ox
 ```
 
-O resultado é o do artigo: as três regras produzem estéticas distintas na mesma
-imagem e classe — `vanilla` é ruído fino com um blob difuso sobre o objeto,
-`deconv` é ruído com estrutura de grade, `guided` desenha o contorno do objeto
-(vaso, laptop, parquímetros). Os picos de `|∂y/∂x|` diferem por ~20× (~0,3 em
-`vanilla`, ~6 em `deconv`, ~2 em `guided`), e a mediana fica em ~4% do pico —
-por isso as figuras normalizam cada mapa por si, com corte no quantil 99% e
-gamma (escala de exibição, nunca de métrica).
+---
 
-E o defeito que o Grad-CAM conserta: `Spearman` entre o mapa da classe top-1 e o
-da top-2 na **mesma** imagem é 0,999 em `deconv`/`guided` — os mapas localizam o
-objeto, mas não dizem qual classe está sendo vista. Em `vanilla` cai para 0,642,
-ainda longe de discriminar. Controle: entre imagens diferentes a correlação vai
-a ~0, então a métrica não é degenerada.
+## Destaques metodológicos e achados numéricos
 
-O Grad-CAM (Eqs. 1–2) entra na Fase 4 e leva esse número a 0,760 — abaixo do
-0,999, mas **acima** do 0,642 do vanilla. A comparação honesta é contra
-`deconv`/`guided`, que operam na mesma resolução de pixel: 14×14 contra 224×224
-muda a ordenação antes de qualquer diferença de método. O que dá para afirmar
-com os dados: os 8 mapas têm o pico dentro da box de ground truth, e o pico só se
-desloca entre as duas classes em 2 das 4 imagens. Discriminação de classe em si
-é a Fase 8 (pointing game *cued*), onde a resolução não entra na conta.
+### 1. O problema da não-discriminação de classe
+As saliências por gradiente (`vanilla`, `deconv`, `guided`) calculam o gradiente em relação à entrada $\partial y^c / \partial x$. O Spearman entre os mapas da classe top-1 e top-2 na **mesma** imagem é **0,999** em `deconv` e `guided` (e 0,642 em `vanilla`): os mapas localizam bem os objetos, mas **não** dizem qual classe está sendo vista — o mapa de "gato" é essencialmente idêntico ao de "cachorro". 
 
-O critério do plano — "mapa de gato no gato e de cachorro no cachorro, na mesma
-foto" — só se cumpre com **dois objetos**, e o top-2 do modelo não serve para
-isso: em 23 das 26 imagens do val2017 com dois objetos grandes e separados,
-top-1 e top-2 são sinônimos do objeto dominante. Com as classes fixadas uma por
-objeto (`04_gradcam_vgg16_95786_cup-vase.png`), o mapa de `cup` acende o copo e
-o de `vase` acende o vaso, com `Spearman` 0,467 entre os dois — a discriminação
-que o `deconv`/`guided` não tem (0,999) e que o Grad-CAM passa a ter.
+O **Grad-CAM** resolve isso ao ponderar as ativações da última camada convolucional pelos gradientes globais pooling-médios $\alpha_k^c$:
+$$\alpha_k^c = \frac{1}{Z} \sum_{i} \sum_{j} \frac{\partial y^c}{\partial A_{i,j}^k}, \quad L_{\text{Grad-CAM}}^c = \text{ReLU}\left(\sum_k \alpha_k^c A^k\right)$$
+Na imagem de dois objetos (`95786`), o mapa de `cup` acende o copo e o de `vase` acende o vaso, com Spearman de **0,467** (contra 0,999 das saliências puras).
 
-A Fase 5 fecha a prova do §3.1 num modelo `conv → GAP → fc`: lendo CAM e Grad-CAM
-**na mesma ativação**, `Z · Grad-CAM = CAM` até o ponto flutuante — `Spearman`
-1,000000, diferença máxima 5,7×10⁻⁶, `Z` = 49 células de `layer4`. O detalhe que
-custou a medição: `layer=None` não cai na mesma camada nos dois métodos (`cam`
-usa a saída do bloco; `gradcam`, a última `Conv2d`, **antes** do BatchNorm e da
-soma residual). Comparar tensores diferentes dá 0,987 e diferença 6,1 — número
-plausível e falso, que passou por "equivalência numérica" até alguém perguntar de
-onde vinham os 6,1.
+### 2. Equivalência exata CAM = $Z \cdot \text{Grad-CAM}$
+Na Fase 5, testamos a prova da Seção 3.1 do paper comparando o CAM clássico de Zhou et al. (arquitetura `conv → GAP → fc`) com o Grad-CAM aplicado na mesma camada final (`layer4`). O `Spearman` obtido é **1,000000** com diferença absoluta máxima de **$5,7 \times 10^{-6}$**, onde $Z = 49$ é a contagem de células da camada de ativação.
 
-A Fase 6 compõe as duas peças: `L_guided = Upsample(L_GradCAM) ⊙ GuidedBackprop`.
-O critério de aceite tem duas metades e `06_guided_gradcam.py` mede as duas. O
-índice de detalhe (variação total normalizada) do produto fica em **1,13–1,27**,
-em cima do Guided Backprop (1,14–1,24) e ~20× o CAM interpolado (0,05–0,06): a
-textura volta. E a localização sobrevive na maioria dos casos — top5% dos pixels
-mais fortes **dentro da box de ground truth** do objeto certo em **0,80–0,96** em
-3 dos 4 casos, com o caso limpo em `54931`: `bubble` acende a pessoa (0,93) e não
-o cavalo (0,00); `ox` acende o cavalo (0,96) e não a pessoa (0,01).
+### 3. Guided Grad-CAM e resolução vs. discriminação
+O Guided Grad-CAM combina o mapa de alto nível do Grad-CAM (discriminativo de classe) com o Guided Backprop (detalhe fino de borda):
+$$L_{\text{Guided Grad-CAM}} = L_{\text{Grad-CAM}}^c \odot R_{\text{Guided Backprop}}$$
+Medimos o detalhe fino em quatro imagens curadas (`22892`, `23781`, `47585`, `54931`): o detalhe médio fica entre **1,13 e 1,27** (próximo ao Guided Backprop puramente 1,14–1,24 e ~20× superior ao CAM 0,05–0,06), mantendo o top-5% da energia na bounding box de ground truth entre **0,80 e 0,96**.
 
-A ressalva que os números obrigam a escrever: o `Spearman` entre as duas classes
-**sobe** nos quatro casos, porque o termo de detalhe é quase invariante à classe
-(0,999 na Fase 3) — e o top5% na box certa cai um pouco em 6 dos 7 casos medidos.
-"Detalhe fino sem perder discriminação" vale para *onde* o mapa acende, não para
-a ordenação fina dos pixels. Os 4 casos (`22892`, `23781`, `47585`, `54931`) foram
-escolhidos por medida, e os descartados (`61333`, `106389`, onde nenhuma classe de
-estante/cadeira localiza) estão registrados no plano. Notebook:
-`notebooks/06_guided.ipynb`, que chama `gradcam/guided.py` e serve para ver a
-composição, não para reimplementá-la.
+### 4. Avaliação em lote (Fase 8) e Sanity Checks (Fase 10)
+- **Pointing Game ($n=300$)**: Grad-CAM atinge **69,0%** (IC 95% 63,6–74,0) e Guided Grad-CAM **63,7%** (58,1–68,9) de acerto na box do cue de ground truth, contra **50,0%** de `vanilla`/`guided` e **34,7%** de `deconv`.
+- **Correlação de Spearman vs. Oclusão ($n=100$, grade 6×6)**: Grad-CAM obtém **0,263** e Guided Grad-CAM **0,234**, superando largamente as saliências puras (0,046 / 0,070 / −0,009), em linha com os valores do paper (0,254 / 0,261).
+- **Cascade Randomization (Adebayo et al.)**: Com apenas a última camada reamostrada ($k=1$), o Grad-CAM cai para **0,250** de correlação, provando que é sensível aos pesos do modelo, enquanto as saliências por gradiente permanecem em **1,000** (pois não dependem da camada de classificação final).
 
-A Fase 7 nega `α` em (1) antes do ReLU de (2) e mede o deslocamento do mapa para
-a evidência contrária. Na imagem de dois objetos (`95786`), o pico sai do objeto
-da classe e anda **9,5 células** (`cup`) e **9,2** (`vase`) num mapa 14×14 (152 e
-147 px na entrada); o `Spearman` entre a favor e a contra é −0,60 e −0,55,
-negativo por construção. O contrafactual **não** é o mapa da "outra classe": para
-`vase` ele acende a região do segundo copo; para `cup`, bordas e fundo. É o que
-se pode afirmar sem vender mais do que a medida mostra. Notebook:
-`notebooks/07_counterfactual.ipynb` (bônus, primeiro item da lista de corte).
-
-A Fase 8 troca o caso único pela avaliação em lote: **300 imagens** no pointing
-game e **100** na oclusão, os cinco métodos na mesma bateria (`vanilla`, `deconv`,
-`guided`, `grad-cam`, `guided grad-cam`), cue de ground truth e semente 0. O
-pointing game pede o pico do mapa e verifica se ele cai na box do cue: **69,0%**
-para o Grad-CAM (IC 95% 63,6–74,0) e **63,7%** para o Guided Grad-CAM
-(58,1–68,9), contra 50,0% de `vanilla` e `guided` e **34,7%** de `deconv` — o
-pior, na mesma direção da Tabela 3 do paper. A oclusão oclui 36 patches de uma
-grade 6×6 e compara a ordenação das quedas de probabilidade com o mapa reduzido
-à média de cada célula: **0,263** (Grad-CAM) e **0,234** (Guided Grad-CAM) contra
-0,046, 0,070 e −0,009 das saliências, com o paper em 0,254 e 0,261. No pointing
-game, os 70,58% do paper vêm do **protocolo modificado** (top-5 com opção de
-rejeitar, §4.2/apêndice D), não do cue de ground truth: a linha da figura é
-ordem de grandeza, e a comparação que vale é a ordenação entre os métodos.
-
-Duas ressalvas que os números obrigam a escrever. Primeiro, os dois métodos de
-CAM ficam **à frente** do padrão do paper na oclusão (lá o GGC é 0,261 e o
-Grad-CAM 0,254): a diferença de 0,029 aqui é pequena e não reivindicamos a
-inversão, só a mesma faixa. Segundo, em 53 das 100 imagens o cue não tem sinal de
-oclusão (queda máxima < 0,01, porque o VGG-16 põe o rótulo de GT no top-5 em só
-57,7% dos casos); filtrando as 47 com sinal, tudo sobe — 0,377 / 0,380 para
-Grad-CAM / GGC — e a conclusão não muda. O filtro é diagnóstico, não protocolo.
-JSON: `pointing_game.json` e `occlusion_spearman.json`; o notebook `08_numeros`
-fica para depois das ablações da Fase 9, que compartilham o mesmo cache.
-
+---
 
 ## Reprodutibilidade
 
-Nenhum dado é versionado: `data/` (3,3 GB) fica fora do git. O que garante
-reprodutibilidade é a combinação de `requirements.txt` (versões mínimas
-fixadas), `scripts/00_download.py --check` (verifica bytes e estrutura em disco)
-e a semente fixa nas amostragens (`subset`, `stratified_subset`).
+Nenhum dado é versionado: `data/` (3,3 GB) fica fora do git. O que garante reprodutibilidade é a combinação de `requirements.txt` (versões mínimas fixadas), `scripts/00_download.py --check` (verifica bytes e estrutura em disco) e a semente fixa nas amostragens.
 
-Fluxo do colaborador: clonar → `pip install -r requirements.txt` →
-`00_download.py` → `00_download.py --check` (espera-se exit 0) →
-`01_forward_sanity.py` (espera-se `ambiente OK`).
-
-
-## Medições
-
-Registradas no `plans/general_plan.md`, seção 0. Resumo: VGG-16 em CPU
-(~330 ms/forward, ~1 s/backward), top-1 de 63% em 27 imagens do COCO val2017
-restritas às 18 categorias que são classes ImageNet verbatim; não-discriminação
-de classe de 0,999 (deconv/guided) e 0,642 (vanilla) em 16 imagens; equivalência
-CAM = Z · Grad-CAM exata (1,000000, 5,7×10⁻⁶) na mesma camada; Guided Grad-CAM
-com detalhe de 1,13–1,27 (≈ Guided Backprop) mantendo 0,80–0,96 do top5% na box
-de ground truth certa em 3 dos 4 casos; contrafactual deslocando o pico 9,5 e
-9,2 células de 14 em `95786`; e, na avaliação em lote (Fase 8), pointing game de
-**69,0%** (Grad-CAM) e 63,7% (Guided Grad-CAM) contra 50,0% das saliências, com
-Spearman vs oclusão de 0,263 e 0,234 contra ~0,05.
-
-Decisão de ambiente: **CPU**, não GPU. Não existe wheel CUDA do torch 2.15 para
-Python 3.14 (os índices param em 2.14.1+cu126), e ~330 ms/forward é suficiente
-para o volume de avaliação previsto.
-
-
-## Nota sobre números
-
-O README vai comparar a **ordenação relativa** dos métodos com a do artigo.
-Os valores absolutos da Tabela 1/3 dependem do setup Caffe original e de
-avaliação 10-crop, então não são reproduzíveis aqui.
+Fluxo do colaborador: clonar → `pip install -r requirements.txt` → `python scripts/00_download.py` → executar os scripts em `scripts/`.
+Tests automatizados cobrem todo o projeto:
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests -q
+```
+Resultado: **100 testes passando**.

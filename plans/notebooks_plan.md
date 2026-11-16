@@ -93,8 +93,8 @@ notebooks/.cache/
    notebook, ele está no lugar errado.
 2. **Pesado não roda ao vivo.** Pointing game (300–500 imagens) e oclusão (~20 min
    em CPU) ficam nos `scripts/` e gravam `results/metrics/*.json`. O notebook plota.
-3. **Todo notebook executa em < 30 s** (o mais caro é `09_sanity`, ~15 s); os 11
-   juntos ~50 s fora o load do modelo. Reexecutar tudo antes de apresentar leva < 2 min.
+3. **Todo notebook executa em < 30 s** (o mais caro é `09_sanity`, ~17 s); os 11
+   juntos ~52 s fora o load do modelo. Reexecutar tudo antes de apresentar leva < 2 min.
 4. **Cabe na projeção.** ≤ 12 células de código e ≤ 6 figuras por notebook, uma
    figura por célula, fonte ≥ 12 pt, dpi 110, `figsize` ≤ (10, 5).
 
@@ -115,13 +115,13 @@ Tempos conforme §6. Soma 29 min + 3 min de folga = 32 min.
 | `06_guided` | 7 · 2 min | "dá para ter resolução **e** discriminação?" | `Grad-CAM ⊙ GB`; zoom nas hastes do brócolis e nos setores do guarda-chuva; comparar resolução (224) com classe | 4 s | Fase 6 |
 | `07_counterfactual` | bônus · 1 min | "e a evidência *contra*?" | negar `α` em (1); mapa migra para o objeto vizinho | 3 s | Fase 7 |
 | `08_numeros` | 8 · 3 min | "nossos números vs paper" | pointing game + Spearman vs oclusão, todos os métodos; barras da **ordenação** nossa × paper, lidas do JSON | 0 | Fases 8–9 |
-| `09_sanity` | 9 · 3 min | "isso é fiel ao modelo?" | cascade randomization: correlação cai monotonicamente; GB "chapado" × Grad-CAM estável | 15 s | Fase 10 |
+| `09_sanity` | 9 · 3 min | "isso é fiel ao modelo?" | cascade randomization de cima para baixo; `\|rho\|` por método. Medido: Grad-CAM perde metade com **uma** camada randomizada (`k=1`) e zera em `k≤4`; GB vai a 1,00 até `k=4` e só cai para 0,225 em `k=16` — não fica "chapado" | 17 s | Fase 10 ✅ |
 | `10_limitacoes` | 10 · 2 min | "quais são os limites?" | grade 14×14 × 224; degradação em `conv3_3`; menção a Grad-CAM++/Score-CAM | 5 s | Fases 9–10 |
 
 Os runtimes acima usam a medição de `02_saliency.py`: **~1,1 s por backward** no
 VGG-16 em CPU (24 backwards = 26,6 s) e ~0,35 s por forward. Backward é o custo
 dominante — um mapa de Grad-CAM custa ~1,5 s, não os 330 ms do forward. Soma
-total dos 11 notebooks: **~50 s**.
+total dos 11 notebooks: **~52 s**.
 
 ### Notas por notebook
 
@@ -220,6 +220,7 @@ o sha1 para o drift aparecer no `--check`.
 |---|---|---|
 | `class_discrimination.json` | `03_class_discrimination.py` | `02_relus` |
 | `cam_vs_gradcam.json` | `05_cam_vs_gradcam.py` | `05_equivalencia` |
+| `counterfactual.json` | `07_counterfactual.py` | `07_counterfactual` |
 | `pointing_game.json` | `08_pointing_game.py` | `08_numeros` |
 | `occlusion_spearman.json` | `09_occlusion_correlation.py` | `08_numeros` |
 | `ablations.json` | `10_ablations.py` | `08_numeros` |
@@ -269,10 +270,10 @@ Um notebook nasce junto com a fase que ele demonstra — nunca antes.
 | **agora** | `deck.py`, `cases.py`, `assets/`, `00_indice.ipynb`, `01_saliency.ipynb`, `02_relus.ipynb` (com a punchline) |
 | Fase 3 ✅ | fecha a punchline de `02_relus` com `class_discrimination.json` |
 | Fase 4 ✅ | `04_gradcam.ipynb` |
-| Fase 5 | `03_cam.ipynb`, `05_equivalencia.ipynb` |
-| Fases 6–7 | `06_guided.ipynb`, `07_counterfactual.ipynb` |
+| Fase 5 ✅ | `03_cam.ipynb`, `05_equivalencia.ipynb` |
+| Fases 6–7 ✅ | `06_guided.ipynb`, `07_counterfactual.ipynb` |
 | Fases 8–9 | `08_numeros.ipynb` |
-| Fase 10 | `09_sanity.ipynb`, `10_limitacoes.ipynb` |
+| Fase 10 | `09_sanity.ipynb` ✅ (curva), `10_limitacoes.ipynb` |
 | Fase 11 | `--export`, ensaio cronometrado, `notebooks/README.md` |
 
 Com as Fases 1–4 concluídas, `00_indice`, `01_saliency`, `02_relus` (com a
@@ -337,4 +338,5 @@ Nesta ordem:
 | 2026-11-16 | `bc1d7a1` | pós-Fase 5: `03_cam` e `05_equivalencia` liberados; a equivalência passa a ser medida na **mesma camada** (`layer4`), rho 1,000000 e diferença 5,7e-06 |
 | 2026-11-16 | `489224b` | pós-Fase 6: `06_guided` deixa de reimplementar a composição e chama `gradcam.guided`; figura e zoom das listras vêm do script |
 | 2026-11-16 | `b850211` | pós-Fase 7: `07_counterfactual` deixa de ser placeholder — figura ao vivo mais `counterfactual.json` (pico desloca 9,5/9,2 células de 14) |
+| 2026-11-16 | `b850211` | pós-Fase 10: `09_sanity` lê `sanity_cascade.json` (5 métodos × 9 checkpoints × 2 imagens); a métrica é `|Spearman|` porque o modelo randomizado inverte o sinal do gradiente; o notebook mostra a curva e uma demonstração ao vivo com `cat_dog` |
 

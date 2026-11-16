@@ -1,0 +1,1321 @@
+{
+  "script": "11_sanity_checks.py",
+  "generated_at": "2026-11-16T01:55:49+00:00",
+  "model": "vgg16",
+  "protocol": "cascade_parameter_randomization",
+  "metric": "|spearman|(map_original, map_randomizado), mesma imagem e classe",
+  "seed": 0,
+  "cutoffs": [
+    0,
+    1,
+    2,
+    4,
+    6,
+    9,
+    12,
+    16
+  ],
+  "n_parameters_modules": 16,
+  "order": [
+    "classifier.6",
+    "classifier.3",
+    "classifier.0",
+    "features.28",
+    "features.26",
+    "features.24",
+    "features.21",
+    "features.19",
+    "features.17",
+    "features.14",
+    "features.12",
+    "features.10",
+    "features.7",
+    "features.5",
+    "features.2",
+    "features.0"
+  ],
+  "display_scale": {
+    "high": 0.99,
+    "gamma": 0.5,
+    "applies_to": "figuras apenas"
+  },
+  "scope": "data randomization (retreino) fora de escopo; so' parametros",
+  "summary": {
+    "vanilla": {
+      "mean_abs_spearman_k0": 1.0,
+      "mean_abs_spearman_final": 0.01368414911229544,
+      "mean_drop": 0.9863158508877046,
+      "final_abs_spearman_per_image": [
+        0.014187881971357353,
+        0.013180416253233528
+      ],
+      "k_first_below_0p5_per_image": [
+        1,
+        1
+      ],
+      "monotonic_per_image": [
+        true,
+        true
+      ],
+      "monotonic_all_images": true
+    },
+    "deconv": {
+      "mean_abs_spearman_k0": 1.0,
+      "mean_abs_spearman_final": 0.1438853805166469,
+      "mean_drop": 0.8561146194833531,
+      "final_abs_spearman_per_image": [
+        0.15024006447893956,
+        0.13753069655435424
+      ],
+      "k_first_below_0p5_per_image": [
+        12,
+        12
+      ],
+      "monotonic_per_image": [
+        true,
+        true
+      ],
+      "monotonic_all_images": true
+    },
+    "guided": {
+      "mean_abs_spearman_k0": 1.0,
+      "mean_abs_spearman_final": 0.22502662288697844,
+      "mean_drop": 0.7749733771130216,
+      "final_abs_spearman_per_image": [
+        0.24706414374650357,
+        0.20298910202745335
+      ],
+      "k_first_below_0p5_per_image": [
+        16,
+        16
+      ],
+      "monotonic_per_image": [
+        true,
+        true
+      ],
+      "monotonic_all_images": true
+    },
+    "gradcam": {
+      "mean_abs_spearman_k0": 1.0,
+      "mean_abs_spearman_final": 0.010036606901963164,
+      "mean_drop": 0.9899633930980368,
+      "final_abs_spearman_per_image": [
+        0.012925745002768085,
+        0.007147468801158244
+      ],
+      "k_first_below_0p5_per_image": [
+        1,
+        1
+      ],
+      "monotonic_per_image": [
+        false,
+        false
+      ],
+      "monotonic_all_images": false
+    },
+    "guided_gradcam": {
+      "mean_abs_spearman_k0": 1.0,
+      "mean_abs_spearman_final": 0.06392596322591793,
+      "mean_drop": 0.9360740367740821,
+      "final_abs_spearman_per_image": [
+        0.03475651169505661,
+        0.09309541475677925
+      ],
+      "k_first_below_0p5_per_image": [
+        1,
+        1
+      ],
+      "monotonic_per_image": [
+        false,
+        false
+      ],
+      "monotonic_all_images": false
+    }
+  },
+  "images": [
+    {
+      "image": "22892",
+      "class_idx": 105,
+      "class": "koala",
+      "prob_original": 0.49788469076156616,
+      "n_parameters_modules": 16,
+      "order": [
+        "classifier.6",
+        "classifier.3",
+        "classifier.0",
+        "features.28",
+        "features.26",
+        "features.24",
+        "features.21",
+        "features.19",
+        "features.17",
+        "features.14",
+        "features.12",
+        "features.10",
+        "features.7",
+        "features.5",
+        "features.2",
+        "features.0"
+      ],
+      "curves": {
+        "vanilla": {
+          "class_idx": 105,
+          "prob_original": 0.49788469076156616,
+          "n_parameters_modules": 16,
+          "seed": 0,
+          "order": [
+            "classifier.6",
+            "classifier.3",
+            "classifier.0",
+            "features.28",
+            "features.26",
+            "features.24",
+            "features.21",
+            "features.19",
+            "features.17",
+            "features.14",
+            "features.12",
+            "features.10",
+            "features.7",
+            "features.5",
+            "features.2",
+            "features.0"
+          ],
+          "steps": [
+            {
+              "k": 0,
+              "added": [],
+              "spearman": 1.0,
+              "abs_spearman": 1.0,
+              "predicted_idx": 105,
+              "prob_class": 0.49788469076156616
+            },
+            {
+              "k": 1,
+              "added": [
+                "classifier.6"
+              ],
+              "spearman": 0.49745871711211,
+              "abs_spearman": 0.49745871711211,
+              "predicted_idx": 920,
+              "prob_class": 0.00014547347382176667
+            },
+            {
+              "k": 2,
+              "added": [
+                "classifier.3"
+              ],
+              "spearman": 0.48182337803232533,
+              "abs_spearman": 0.48182337803232533,
+              "predicted_idx": 900,
+              "prob_class": 0.00012110431271139532
+            },
+            {
+              "k": 4,
+              "added": [
+                "classifier.0",
+                "features.28"
+              ],
+              "spearman": 0.44836099219272174,
+              "abs_spearman": 0.44836099219272174,
+              "predicted_idx": 152,
+              "prob_class": 5.45544082797278e-07
+            },
+            {
+              "k": 6,
+              "added": [
+                "features.26",
+                "features.24"
+              ],
+              "spearman": 0.357817503055961,
+              "abs_spearman": 0.357817503055961,
+              "predicted_idx": 283,
+              "prob_class": 1.5622223024751303e-13
+            },
+            {
+              "k": 9,
+              "added": [
+                "features.21",
+                "features.19",
+                "features.17"
+              ],
+              "spearman": 0.2720700148770192,
+              "abs_spearman": 0.2720700148770192,
+              "predicted_idx": 526,
+              "prob_class": 1.87183498740618e-31
+            },
+            {
+              "k": 12,
+              "added": [
+                "features.14",
+                "features.12",
+                "features.10"
+              ],
+              "spearman": 0.1719712690731532,
+              "abs_spearman": 0.1719712690731532,
+              "predicted_idx": 526,
+              "prob_class": 2.6439029054039436e-28
+            },
+            {
+              "k": 16,
+              "added": [
+                "features.7",
+                "features.5",
+                "features.2",
+                "features.0"
+              ],
+              "spearman": 0.014187881971357353,
+              "abs_spearman": 0.014187881971357353,
+              "predicted_idx": 634,
+              "prob_class": 1.9613214874425466e-07
+            }
+          ]
+        },
+        "deconv": {
+          "class_idx": 105,
+          "prob_original": 0.49788469076156616,
+          "n_parameters_modules": 16,
+          "seed": 0,
+          "order": [
+            "classifier.6",
+            "classifier.3",
+            "classifier.0",
+            "features.28",
+            "features.26",
+            "features.24",
+            "features.21",
+            "features.19",
+            "features.17",
+            "features.14",
+            "features.12",
+            "features.10",
+            "features.7",
+            "features.5",
+            "features.2",
+            "features.0"
+          ],
+          "steps": [
+            {
+              "k": 0,
+              "added": [],
+              "spearman": 1.0,
+              "abs_spearman": 1.0,
+              "predicted_idx": 105,
+              "prob_class": 0.49788469076156616
+            },
+            {
+              "k": 1,
+              "added": [
+                "classifier.6"
+              ],
+              "spearman": 0.9983117185753555,
+              "abs_spearman": 0.9983117185753555,
+              "predicted_idx": 920,
+              "prob_class": 0.00014547347382176667
+            },
+            {
+              "k": 2,
+              "added": [
+                "classifier.3"
+              ],
+              "spearman": 0.9970575258819668,
+              "abs_spearman": 0.9970575258819668,
+              "predicted_idx": 900,
+              "prob_class": 0.00012110431271139532
+            },
+            {
+              "k": 4,
+              "added": [
+                "classifier.0",
+                "features.28"
+              ],
+              "spearman": 0.9848898549746987,
+              "abs_spearman": 0.9848898549746987,
+              "predicted_idx": 152,
+              "prob_class": 5.45544082797278e-07
+            },
+            {
+              "k": 6,
+              "added": [
+                "features.26",
+                "features.24"
+              ],
+              "spearman": 0.9828998290987252,
+              "abs_spearman": 0.9828998290987252,
+              "predicted_idx": 283,
+              "prob_class": 1.5622223024751303e-13
+            },
+            {
+              "k": 9,
+              "added": [
+                "features.21",
+                "features.19",
+                "features.17"
+              ],
+              "spearman": 0.819432164744991,
+              "abs_spearman": 0.819432164744991,
+              "predicted_idx": 526,
+              "prob_class": 1.87183498740618e-31
+            },
+            {
+              "k": 12,
+              "added": [
+                "features.14",
+                "features.12",
+                "features.10"
+              ],
+              "spearman": 0.43872146108905336,
+              "abs_spearman": 0.43872146108905336,
+              "predicted_idx": 526,
+              "prob_class": 2.6439029054039436e-28
+            },
+            {
+              "k": 16,
+              "added": [
+                "features.7",
+                "features.5",
+                "features.2",
+                "features.0"
+              ],
+              "spearman": 0.15024006447893956,
+              "abs_spearman": 0.15024006447893956,
+              "predicted_idx": 634,
+              "prob_class": 1.9613214874425466e-07
+            }
+          ]
+        },
+        "guided": {
+          "class_idx": 105,
+          "prob_original": 0.49788469076156616,
+          "n_parameters_modules": 16,
+          "seed": 0,
+          "order": [
+            "classifier.6",
+            "classifier.3",
+            "classifier.0",
+            "features.28",
+            "features.26",
+            "features.24",
+            "features.21",
+            "features.19",
+            "features.17",
+            "features.14",
+            "features.12",
+            "features.10",
+            "features.7",
+            "features.5",
+            "features.2",
+            "features.0"
+          ],
+          "steps": [
+            {
+              "k": 0,
+              "added": [],
+              "spearman": 0.9999999999999999,
+              "abs_spearman": 0.9999999999999999,
+              "predicted_idx": 105,
+              "prob_class": 0.49788469076156616
+            },
+            {
+              "k": 1,
+              "added": [
+                "classifier.6"
+              ],
+              "spearman": 0.9979714421582115,
+              "abs_spearman": 0.9979714421582115,
+              "predicted_idx": 920,
+              "prob_class": 0.00014547347382176667
+            },
+            {
+              "k": 2,
+              "added": [
+                "classifier.3"
+              ],
+              "spearman": 0.9951335623701458,
+              "abs_spearman": 0.9951335623701458,
+              "predicted_idx": 900,
+              "prob_class": 0.00012110431271139532
+            },
+            {
+              "k": 4,
+              "added": [
+                "classifier.0",
+                "features.28"
+              ],
+              "spearman": 0.9835526335068273,
+              "abs_spearman": 0.9835526335068273,
+              "predicted_idx": 152,
+              "prob_class": 5.45544082797278e-07
+            },
+            {
+              "k": 6,
+              "added": [
+                "features.26",
+                "features.24"
+              ],
+              "spearman": 0.9495169633207846,
+              "abs_spearman": 0.9495169633207846,
+              "predicted_idx": 283,
+              "prob_class": 1.5622223024751303e-13
+            },
+            {
+              "k": 9,
+              "added": [
+                "features.21",
+                "features.19",
+                "features.17"
+              ],
+              "spearman": 0.8786543160496918,
+              "abs_spearman": 0.8786543160496918,
+              "predicted_idx": 526,
+              "prob_class": 1.87183498740618e-31
+            },
+            {
+              "k": 12,
+              "added": [
+                "features.14",
+                "features.12",
+                "features.10"
+              ],
+              "spearman": 0.7346332978891851,
+              "abs_spearman": 0.7346332978891851,
+              "predicted_idx": 526,
+              "prob_class": 2.6439029054039436e-28
+            },
+            {
+              "k": 16,
+              "added": [
+                "features.7",
+                "features.5",
+                "features.2",
+                "features.0"
+              ],
+              "spearman": 0.24706414374650357,
+              "abs_spearman": 0.24706414374650357,
+              "predicted_idx": 634,
+              "prob_class": 1.9613214874425466e-07
+            }
+          ]
+        },
+        "gradcam": {
+          "class_idx": 105,
+          "prob_original": 0.49788469076156616,
+          "n_parameters_modules": 16,
+          "seed": 0,
+          "order": [
+            "classifier.6",
+            "classifier.3",
+            "classifier.0",
+            "features.28",
+            "features.26",
+            "features.24",
+            "features.21",
+            "features.19",
+            "features.17",
+            "features.14",
+            "features.12",
+            "features.10",
+            "features.7",
+            "features.5",
+            "features.2",
+            "features.0"
+          ],
+          "steps": [
+            {
+              "k": 0,
+              "added": [],
+              "spearman": 1.0,
+              "abs_spearman": 1.0,
+              "predicted_idx": 105,
+              "prob_class": 0.49788469076156616
+            },
+            {
+              "k": 1,
+              "added": [
+                "classifier.6"
+              ],
+              "spearman": -0.31296392096174214,
+              "abs_spearman": 0.31296392096174214,
+              "predicted_idx": 920,
+              "prob_class": 0.00014547347382176667
+            },
+            {
+              "k": 2,
+              "added": [
+                "classifier.3"
+              ],
+              "spearman": -0.26108475959867955,
+              "abs_spearman": 0.26108475959867955,
+              "predicted_idx": 900,
+              "prob_class": 0.00012110431271139532
+            },
+            {
+              "k": 4,
+              "added": [
+                "classifier.0",
+                "features.28"
+              ],
+              "spearman": 0.10893835786297214,
+              "abs_spearman": 0.10893835786297214,
+              "predicted_idx": 152,
+              "prob_class": 5.45544082797278e-07
+            },
+            {
+              "k": 6,
+              "added": [
+                "features.26",
+                "features.24"
+              ],
+              "spearman": -0.17564376137408536,
+              "abs_spearman": 0.17564376137408536,
+              "predicted_idx": 283,
+              "prob_class": 1.5622223024751303e-13
+            },
+            {
+              "k": 9,
+              "added": [
+                "features.21",
+                "features.19",
+                "features.17"
+              ],
+              "spearman": -0.05470696559583988,
+              "abs_spearman": 0.05470696559583988,
+              "predicted_idx": 526,
+              "prob_class": 1.87183498740618e-31
+            },
+            {
+              "k": 12,
+              "added": [
+                "features.14",
+                "features.12",
+                "features.10"
+              ],
+              "spearman": -0.02446826289198362,
+              "abs_spearman": 0.02446826289198362,
+              "predicted_idx": 526,
+              "prob_class": 2.6439029054039436e-28
+            },
+            {
+              "k": 16,
+              "added": [
+                "features.7",
+                "features.5",
+                "features.2",
+                "features.0"
+              ],
+              "spearman": -0.012925745002768085,
+              "abs_spearman": 0.012925745002768085,
+              "predicted_idx": 634,
+              "prob_class": 1.9613214874425466e-07
+            }
+          ]
+        },
+        "guided_gradcam": {
+          "class_idx": 105,
+          "prob_original": 0.49788469076156616,
+          "n_parameters_modules": 16,
+          "seed": 0,
+          "order": [
+            "classifier.6",
+            "classifier.3",
+            "classifier.0",
+            "features.28",
+            "features.26",
+            "features.24",
+            "features.21",
+            "features.19",
+            "features.17",
+            "features.14",
+            "features.12",
+            "features.10",
+            "features.7",
+            "features.5",
+            "features.2",
+            "features.0"
+          ],
+          "steps": [
+            {
+              "k": 0,
+              "added": [],
+              "spearman": 1.0,
+              "abs_spearman": 1.0,
+              "predicted_idx": 105,
+              "prob_class": 0.49788469076156616
+            },
+            {
+              "k": 1,
+              "added": [
+                "classifier.6"
+              ],
+              "spearman": 0.018718200359906602,
+              "abs_spearman": 0.018718200359906602,
+              "predicted_idx": 920,
+              "prob_class": 0.00014547347382176667
+            },
+            {
+              "k": 2,
+              "added": [
+                "classifier.3"
+              ],
+              "spearman": 0.13051726957908738,
+              "abs_spearman": 0.13051726957908738,
+              "predicted_idx": 900,
+              "prob_class": 0.00012110431271139532
+            },
+            {
+              "k": 4,
+              "added": [
+                "classifier.0",
+                "features.28"
+              ],
+              "spearman": 0.18789357540290796,
+              "abs_spearman": 0.18789357540290796,
+              "predicted_idx": 152,
+              "prob_class": 5.45544082797278e-07
+            },
+            {
+              "k": 6,
+              "added": [
+                "features.26",
+                "features.24"
+              ],
+              "spearman": -0.15395800823210914,
+              "abs_spearman": 0.15395800823210914,
+              "predicted_idx": 283,
+              "prob_class": 1.5622223024751303e-13
+            },
+            {
+              "k": 9,
+              "added": [
+                "features.21",
+                "features.19",
+                "features.17"
+              ],
+              "spearman": -0.025427622484462044,
+              "abs_spearman": 0.025427622484462044,
+              "predicted_idx": 526,
+              "prob_class": 1.87183498740618e-31
+            },
+            {
+              "k": 12,
+              "added": [
+                "features.14",
+                "features.12",
+                "features.10"
+              ],
+              "spearman": -0.0704511757449799,
+              "abs_spearman": 0.0704511757449799,
+              "predicted_idx": 526,
+              "prob_class": 2.6439029054039436e-28
+            },
+            {
+              "k": 16,
+              "added": [
+                "features.7",
+                "features.5",
+                "features.2",
+                "features.0"
+              ],
+              "spearman": -0.03475651169505661,
+              "abs_spearman": 0.03475651169505661,
+              "predicted_idx": 634,
+              "prob_class": 1.9613214874425466e-07
+            }
+          ]
+        }
+      }
+    },
+    {
+      "image": "95786",
+      "class_idx": 504,
+      "class": "coffee mug",
+      "prob_original": 0.46962711215019226,
+      "n_parameters_modules": 16,
+      "order": [
+        "classifier.6",
+        "classifier.3",
+        "classifier.0",
+        "features.28",
+        "features.26",
+        "features.24",
+        "features.21",
+        "features.19",
+        "features.17",
+        "features.14",
+        "features.12",
+        "features.10",
+        "features.7",
+        "features.5",
+        "features.2",
+        "features.0"
+      ],
+      "curves": {
+        "vanilla": {
+          "class_idx": 504,
+          "prob_original": 0.46962711215019226,
+          "n_parameters_modules": 16,
+          "seed": 0,
+          "order": [
+            "classifier.6",
+            "classifier.3",
+            "classifier.0",
+            "features.28",
+            "features.26",
+            "features.24",
+            "features.21",
+            "features.19",
+            "features.17",
+            "features.14",
+            "features.12",
+            "features.10",
+            "features.7",
+            "features.5",
+            "features.2",
+            "features.0"
+          ],
+          "steps": [
+            {
+              "k": 0,
+              "added": [],
+              "spearman": 1.0,
+              "abs_spearman": 1.0,
+              "predicted_idx": 504,
+              "prob_class": 0.46962711215019226
+            },
+            {
+              "k": 1,
+              "added": [
+                "classifier.6"
+              ],
+              "spearman": 0.36653333526027987,
+              "abs_spearman": 0.36653333526027987,
+              "predicted_idx": 160,
+              "prob_class": 0.0009620688506402075
+            },
+            {
+              "k": 2,
+              "added": [
+                "classifier.3"
+              ],
+              "spearman": 0.3683414359827656,
+              "abs_spearman": 0.3683414359827656,
+              "predicted_idx": 682,
+              "prob_class": 0.0006277168868109584
+            },
+            {
+              "k": 4,
+              "added": [
+                "classifier.0",
+                "features.28"
+              ],
+              "spearman": 0.32587551392347425,
+              "abs_spearman": 0.32587551392347425,
+              "predicted_idx": 283,
+              "prob_class": 6.1408759393088985e-06
+            },
+            {
+              "k": 6,
+              "added": [
+                "features.26",
+                "features.24"
+              ],
+              "spearman": 0.29490562564784883,
+              "abs_spearman": 0.29490562564784883,
+              "predicted_idx": 858,
+              "prob_class": 9.869387440630817e-07
+            },
+            {
+              "k": 9,
+              "added": [
+                "features.21",
+                "features.19",
+                "features.17"
+              ],
+              "spearman": 0.2734330468424405,
+              "abs_spearman": 0.2734330468424405,
+              "predicted_idx": 526,
+              "prob_class": 1.501149465149565e-13
+            },
+            {
+              "k": 12,
+              "added": [
+                "features.14",
+                "features.12",
+                "features.10"
+              ],
+              "spearman": 0.1985155149608006,
+              "abs_spearman": 0.1985155149608006,
+              "predicted_idx": 699,
+              "prob_class": 6.272625648062746e-13
+            },
+            {
+              "k": 16,
+              "added": [
+                "features.7",
+                "features.5",
+                "features.2",
+                "features.0"
+              ],
+              "spearman": -0.013180416253233528,
+              "abs_spearman": 0.013180416253233528,
+              "predicted_idx": 526,
+              "prob_class": 0.00011588812776608393
+            }
+          ]
+        },
+        "deconv": {
+          "class_idx": 504,
+          "prob_original": 0.46962711215019226,
+          "n_parameters_modules": 16,
+          "seed": 0,
+          "order": [
+            "classifier.6",
+            "classifier.3",
+            "classifier.0",
+            "features.28",
+            "features.26",
+            "features.24",
+            "features.21",
+            "features.19",
+            "features.17",
+            "features.14",
+            "features.12",
+            "features.10",
+            "features.7",
+            "features.5",
+            "features.2",
+            "features.0"
+          ],
+          "steps": [
+            {
+              "k": 0,
+              "added": [],
+              "spearman": 1.0,
+              "abs_spearman": 1.0,
+              "predicted_idx": 504,
+              "prob_class": 0.46962711215019226
+            },
+            {
+              "k": 1,
+              "added": [
+                "classifier.6"
+              ],
+              "spearman": 0.9993677257211556,
+              "abs_spearman": 0.9993677257211556,
+              "predicted_idx": 160,
+              "prob_class": 0.0009620688506402075
+            },
+            {
+              "k": 2,
+              "added": [
+                "classifier.3"
+              ],
+              "spearman": 0.9919245016894741,
+              "abs_spearman": 0.9919245016894741,
+              "predicted_idx": 682,
+              "prob_class": 0.0006277168868109584
+            },
+            {
+              "k": 4,
+              "added": [
+                "classifier.0",
+                "features.28"
+              ],
+              "spearman": 0.9899915492785524,
+              "abs_spearman": 0.9899915492785524,
+              "predicted_idx": 283,
+              "prob_class": 6.1408759393088985e-06
+            },
+            {
+              "k": 6,
+              "added": [
+                "features.26",
+                "features.24"
+              ],
+              "spearman": 0.984085499469024,
+              "abs_spearman": 0.984085499469024,
+              "predicted_idx": 858,
+              "prob_class": 9.869387440630817e-07
+            },
+            {
+              "k": 9,
+              "added": [
+                "features.21",
+                "features.19",
+                "features.17"
+              ],
+              "spearman": 0.8229332738432182,
+              "abs_spearman": 0.8229332738432182,
+              "predicted_idx": 526,
+              "prob_class": 1.501149465149565e-13
+            },
+            {
+              "k": 12,
+              "added": [
+                "features.14",
+                "features.12",
+                "features.10"
+              ],
+              "spearman": 0.39035282882066846,
+              "abs_spearman": 0.39035282882066846,
+              "predicted_idx": 699,
+              "prob_class": 6.272625648062746e-13
+            },
+            {
+              "k": 16,
+              "added": [
+                "features.7",
+                "features.5",
+                "features.2",
+                "features.0"
+              ],
+              "spearman": 0.13753069655435424,
+              "abs_spearman": 0.13753069655435424,
+              "predicted_idx": 526,
+              "prob_class": 0.00011588812776608393
+            }
+          ]
+        },
+        "guided": {
+          "class_idx": 504,
+          "prob_original": 0.46962711215019226,
+          "n_parameters_modules": 16,
+          "seed": 0,
+          "order": [
+            "classifier.6",
+            "classifier.3",
+            "classifier.0",
+            "features.28",
+            "features.26",
+            "features.24",
+            "features.21",
+            "features.19",
+            "features.17",
+            "features.14",
+            "features.12",
+            "features.10",
+            "features.7",
+            "features.5",
+            "features.2",
+            "features.0"
+          ],
+          "steps": [
+            {
+              "k": 0,
+              "added": [],
+              "spearman": 1.0,
+              "abs_spearman": 1.0,
+              "predicted_idx": 504,
+              "prob_class": 0.46962711215019226
+            },
+            {
+              "k": 1,
+              "added": [
+                "classifier.6"
+              ],
+              "spearman": 0.9992201309278741,
+              "abs_spearman": 0.9992201309278741,
+              "predicted_idx": 160,
+              "prob_class": 0.0009620688506402075
+            },
+            {
+              "k": 2,
+              "added": [
+                "classifier.3"
+              ],
+              "spearman": 0.9980651222393934,
+              "abs_spearman": 0.9980651222393934,
+              "predicted_idx": 682,
+              "prob_class": 0.0006277168868109584
+            },
+            {
+              "k": 4,
+              "added": [
+                "classifier.0",
+                "features.28"
+              ],
+              "spearman": 0.9895451674609247,
+              "abs_spearman": 0.9895451674609247,
+              "predicted_idx": 283,
+              "prob_class": 6.1408759393088985e-06
+            },
+            {
+              "k": 6,
+              "added": [
+                "features.26",
+                "features.24"
+              ],
+              "spearman": 0.974588784194078,
+              "abs_spearman": 0.974588784194078,
+              "predicted_idx": 858,
+              "prob_class": 9.869387440630817e-07
+            },
+            {
+              "k": 9,
+              "added": [
+                "features.21",
+                "features.19",
+                "features.17"
+              ],
+              "spearman": 0.8916980743333353,
+              "abs_spearman": 0.8916980743333353,
+              "predicted_idx": 526,
+              "prob_class": 1.501149465149565e-13
+            },
+            {
+              "k": 12,
+              "added": [
+                "features.14",
+                "features.12",
+                "features.10"
+              ],
+              "spearman": 0.7250989387296105,
+              "abs_spearman": 0.7250989387296105,
+              "predicted_idx": 699,
+              "prob_class": 6.272625648062746e-13
+            },
+            {
+              "k": 16,
+              "added": [
+                "features.7",
+                "features.5",
+                "features.2",
+                "features.0"
+              ],
+              "spearman": 0.20298910202745335,
+              "abs_spearman": 0.20298910202745335,
+              "predicted_idx": 526,
+              "prob_class": 0.00011588812776608393
+            }
+          ]
+        },
+        "gradcam": {
+          "class_idx": 504,
+          "prob_original": 0.46962711215019226,
+          "n_parameters_modules": 16,
+          "seed": 0,
+          "order": [
+            "classifier.6",
+            "classifier.3",
+            "classifier.0",
+            "features.28",
+            "features.26",
+            "features.24",
+            "features.21",
+            "features.19",
+            "features.17",
+            "features.14",
+            "features.12",
+            "features.10",
+            "features.7",
+            "features.5",
+            "features.2",
+            "features.0"
+          ],
+          "steps": [
+            {
+              "k": 0,
+              "added": [],
+              "spearman": 1.0,
+              "abs_spearman": 1.0,
+              "predicted_idx": 504,
+              "prob_class": 0.46962711215019226
+            },
+            {
+              "k": 1,
+              "added": [
+                "classifier.6"
+              ],
+              "spearman": 0.18960820684736085,
+              "abs_spearman": 0.18960820684736085,
+              "predicted_idx": 160,
+              "prob_class": 0.0009620688506402075
+            },
+            {
+              "k": 2,
+              "added": [
+                "classifier.3"
+              ],
+              "spearman": -0.1358063634189438,
+              "abs_spearman": 0.1358063634189438,
+              "predicted_idx": 682,
+              "prob_class": 0.0006277168868109584
+            },
+            {
+              "k": 4,
+              "added": [
+                "classifier.0",
+                "features.28"
+              ],
+              "spearman": -0.0011810783212576246,
+              "abs_spearman": 0.0011810783212576246,
+              "predicted_idx": 283,
+              "prob_class": 6.1408759393088985e-06
+            },
+            {
+              "k": 6,
+              "added": [
+                "features.26",
+                "features.24"
+              ],
+              "spearman": -0.01406532462226295,
+              "abs_spearman": 0.01406532462226295,
+              "predicted_idx": 858,
+              "prob_class": 9.869387440630817e-07
+            },
+            {
+              "k": 9,
+              "added": [
+                "features.21",
+                "features.19",
+                "features.17"
+              ],
+              "spearman": -0.060388049136953455,
+              "abs_spearman": 0.060388049136953455,
+              "predicted_idx": 526,
+              "prob_class": 1.501149465149565e-13
+            },
+            {
+              "k": 12,
+              "added": [
+                "features.14",
+                "features.12",
+                "features.10"
+              ],
+              "spearman": 0.07294803813230122,
+              "abs_spearman": 0.07294803813230122,
+              "predicted_idx": 699,
+              "prob_class": 6.272625648062746e-13
+            },
+            {
+              "k": 16,
+              "added": [
+                "features.7",
+                "features.5",
+                "features.2",
+                "features.0"
+              ],
+              "spearman": 0.007147468801158244,
+              "abs_spearman": 0.007147468801158244,
+              "predicted_idx": 526,
+              "prob_class": 0.00011588812776608393
+            }
+          ]
+        },
+        "guided_gradcam": {
+          "class_idx": 504,
+          "prob_original": 0.46962711215019226,
+          "n_parameters_modules": 16,
+          "seed": 0,
+          "order": [
+            "classifier.6",
+            "classifier.3",
+            "classifier.0",
+            "features.28",
+            "features.26",
+            "features.24",
+            "features.21",
+            "features.19",
+            "features.17",
+            "features.14",
+            "features.12",
+            "features.10",
+            "features.7",
+            "features.5",
+            "features.2",
+            "features.0"
+          ],
+          "steps": [
+            {
+              "k": 0,
+              "added": [],
+              "spearman": 1.0,
+              "abs_spearman": 1.0,
+              "predicted_idx": 504,
+              "prob_class": 0.46962711215019226
+            },
+            {
+              "k": 1,
+              "added": [
+                "classifier.6"
+              ],
+              "spearman": 0.4593742779883553,
+              "abs_spearman": 0.4593742779883553,
+              "predicted_idx": 160,
+              "prob_class": 0.0009620688506402075
+            },
+            {
+              "k": 2,
+              "added": [
+                "classifier.3"
+              ],
+              "spearman": 0.14295080188704726,
+              "abs_spearman": 0.14295080188704726,
+              "predicted_idx": 682,
+              "prob_class": 0.0006277168868109584
+            },
+            {
+              "k": 4,
+              "added": [
+                "classifier.0",
+                "features.28"
+              ],
+              "spearman": 0.2875285343886339,
+              "abs_spearman": 0.2875285343886339,
+              "predicted_idx": 283,
+              "prob_class": 6.1408759393088985e-06
+            },
+            {
+              "k": 6,
+              "added": [
+                "features.26",
+                "features.24"
+              ],
+              "spearman": 0.5014164493079717,
+              "abs_spearman": 0.5014164493079717,
+              "predicted_idx": 858,
+              "prob_class": 9.869387440630817e-07
+            },
+            {
+              "k": 9,
+              "added": [
+                "features.21",
+                "features.19",
+                "features.17"
+              ],
+              "spearman": 0.18739677194764054,
+              "abs_spearman": 0.18739677194764054,
+              "predicted_idx": 526,
+              "prob_class": 1.501149465149565e-13
+            },
+            {
+              "k": 12,
+              "added": [
+                "features.14",
+                "features.12",
+                "features.10"
+              ],
+              "spearman": 0.3471497437249289,
+              "abs_spearman": 0.3471497437249289,
+              "predicted_idx": 699,
+              "prob_class": 6.272625648062746e-13
+            },
+            {
+              "k": 16,
+              "added": [
+                "features.7",
+                "features.5",
+                "features.2",
+                "features.0"
+              ],
+              "spearman": 0.09309541475677925,
+              "abs_spearman": 0.09309541475677925,
+              "predicted_idx": 526,
+              "prob_class": 0.00011588812776608393
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
