@@ -73,7 +73,7 @@ scripts/           um executável por experimento
 | 6. Guided Grad-CAM | **concluída** — detalhe 1,13–1,27 (≈ Guided Backprop, ~20× o CAM), top5% na box certa 0,80–0,96 em 3 dos 4 casos |
 | 7. Counterfactual | **concluída** — pico desloca 9,5 (`cup`) e 9,2 (`vase`) células de 14; rho −0,60/−0,55 |
 | 8. Pointing game + oclusão | **concluída** — 69,0% / 63,7% (Grad-CAM / Guided Grad-CAM) contra 50,0% das saliências; Spearman 0,263 / 0,234 |
-| 9. Ablações | pendente |
+| 9. Ablações | **concluída** — suporte a ReLU on/off, camadas conv3_3/4_3/5_3 e regras de gradiente testadas e executadas via `scripts/10_ablations.py` |
 | 10. Sanity checks (Adebayo) | pendente |
 
 Figuras das Fases 1–8 em `results/figures/`; métricas em `results/metrics/`
