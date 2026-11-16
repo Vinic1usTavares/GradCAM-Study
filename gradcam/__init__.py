@@ -4,7 +4,7 @@ Fases 0-4: carregamento de modelos, utilitarios de imagem, saliencia por
 gradiente (vanilla | deconv | guided) e Grad-CAM (Eqs. 1-2).
 """
 
-from .core import VGG16_LAYERS, gradcam, resolve_layer
+from .core import VGG16_LAYERS, cam, gradcam, resolve_cam_layers, resolve_layer
 from .metrics import (
     MapFn,
     class_discrimination,
@@ -38,6 +38,7 @@ __all__ = [
     "WEIGHTS_DIR",
     "MapFn",
     "ReluVariant",
+    "cam",
     "class_discrimination",
     "denormalize",
     "disable_inplace_relu",
@@ -50,6 +51,7 @@ __all__ = [
     "predict",
     "preprocess",
     "relu_mode",
+    "resolve_cam_layers",
     "resolve_layer",
     "saliency",
     "saliency_map",

@@ -112,6 +112,88 @@ def _forward_with_activations(
     return scores, captured[0]
 
 
+def resolve_cam_layers(
+    model: nn.Module,
+    layer: nn.Module | str | None = None,
+    fc: nn.Linear | str | None = None,
+) -> tuple[nn.Module, nn.Linear]:
+    """Resolve a camada de ativacao e a camada linear para o CAM (Zhou et al., 2016).
+
+    O CAM exige arquitetura com Global Average Pooling (GAP) seguido de uma
+    camada linear (`conv -> GAP -> fc`):
+    - `layer`: camada anterior ao GAP. Se `None`, usa `model.layer4` se existir
+      (padrao ResNet), senao a ultima conv/bloco por `resolve_layer`.
+    - `fc`: camada linear de classificacao. Se `None`, usa `model.fc` se
+      existir, senao o ultimo `nn.Linear` do modelo.
+    """
+    if layer is not None:
+        target_layer = resolve_layer(model, layer)
+    elif hasattr(model, "layer4") and isinstance(model.layer4, nn.Module):
+        target_layer = model.layer4
+    else:
+        target_layer = resolve_layer(model, None)
+
+    if fc is None:
+        if hasattr(model, "fc") and isinstance(model.fc, nn.Linear):
+            fc_layer = model.fc
+        else:
+            linears = [m for m in model.modules() if isinstance(m, nn.Linear)]
+            if not linears:
+                raise ValueError("modelo sem camada linear (nn.Linear) para o CAM")
+            fc_layer = linears[-1]
+    elif isinstance(fc, str):
+        modules = dict(model.named_modules())
+        if fc not in modules:
+            raise KeyError(f"camada linear inexistente: {fc!r}")
+        if not isinstance(modules[fc], nn.Linear):
+            raise TypeError(f"camada {fc!r} nao e' nn.Linear")
+        fc_layer = modules[fc]
+    else:
+        if not isinstance(fc, nn.Linear):
+            raise TypeError(f"esperava nn.Linear; recebi {type(fc)}")
+        fc_layer = fc
+
+    return target_layer, fc_layer
+
+
+def cam(
+    model: nn.Module,
+    x: torch.Tensor,
+    class_idx: int | None = None,
+    layer: nn.Module | str | None = None,
+    fc: nn.Linear | str | None = None,
+    apply_relu: bool = True,
+) -> tuple[torch.Tensor, int]:
+    """Class Activation Map (Zhou et al., 2016).
+
+        L_CAM^c = ReLU( sum_k w_k^c . A^k )
+
+    onde `w_k^c` sao os pesos da camada linear apos o Global Average Pooling.
+
+    Em redes `conv -> GAP -> fc` (como ResNet-18), a derivada do score em relacao
+    a ativacao `A_ij^k` e' exatamente `(1 / Z) * w_k^c`. O Grad-CAM (Eqs. 1-2)
+    produz:
+        alpha_k^c = (1 / Z) * w_k^c
+    logo:
+        Z * L_GradCAM^c = L_CAM^c
+
+    comprovando analitica e numericamente que o Grad-CAM e' uma generalizacao do
+    CAM para arquiteturas arbitrarias (secao 3.1 do artigo).
+    """
+    if x.ndim != 4 or x.shape[0] != 1:
+        raise ValueError(f"esperava (1, C, H, W); recebi {tuple(x.shape)}")
+
+    target_layer, fc_layer = resolve_cam_layers(model, layer, fc)
+    scores, activations = _forward_with_activations(model, x, target_layer)
+    if class_idx is None:
+        class_idx = int(scores.argmax(dim=1).item())
+
+    # w_k^c: pesos da classe c para cada canal k
+    w_c = fc_layer.weight[class_idx]
+    weighted = (w_c.view(1, -1, 1, 1) * activations).sum(dim=1)[0]
+    return (weighted.clamp(min=0) if apply_relu else weighted), class_idx
+
+
 def gradcam(
     model: nn.Module,
     x: torch.Tensor,
