@@ -1,9 +1,9 @@
 """Grad-CAM reimplementado do zero.
 
-Fases 0-7: carregamento de modelos, utilitarios de imagem, saliencia por
+Fases 0-8: carregamento de modelos, utilitarios de imagem, saliencia por
 gradiente (vanilla | deconv | guided), CAM (Zhou et al.), Grad-CAM (Eqs. 1-2),
-Guided Grad-CAM (`gradcam * guided backprop`) e o contrafactual (negacao de
-alpha em (1)).
+Guided Grad-CAM (`gradcam * guided backprop`), o contrafactual (negacao de
+alpha em (1)) e a avaliacao em lote (pointing game + Spearman vs oclusao).
 """
 
 from .core import (
@@ -13,6 +13,18 @@ from .core import (
     gradcam,
     resolve_cam_layers,
     resolve_layer,
+)
+from .eval import (
+    cue_object,
+    evaluation_pool,
+    grid_cells,
+    occlusion_correlation,
+    occlusion_map,
+    peak_point,
+    pointing_hit,
+    pool_to_grid,
+    scaled_boxes,
+    wilson_interval,
 )
 from .guided import compose_guided_gradcam, guided_gradcam
 from .metrics import (
@@ -53,16 +65,24 @@ __all__ = [
     "class_discrimination",
     "compose_guided_gradcam",
     "counterfactual",
+    "cue_object",
     "denormalize",
     "disable_inplace_relu",
+    "evaluation_pool",
     "gradcam",
     "gradcam_map_fn",
+    "grid_cells",
     "guided_backprop",
     "guided_gradcam",
     "guided_gradcam_map_fn",
     "imagenet_labels",
     "input_gradient",
     "load_model",
+    "occlusion_correlation",
+    "occlusion_map",
+    "peak_point",
+    "pointing_hit",
+    "pool_to_grid",
     "predict",
     "preprocess",
     "relu_mode",
@@ -72,7 +92,9 @@ __all__ = [
     "saliency_map",
     "saliency_map_fn",
     "saliency_map_fns",
+    "scaled_boxes",
     "set_relu_mode",
     "spearman",
     "summarize",
+    "wilson_interval",
 ]

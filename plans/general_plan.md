@@ -358,6 +358,84 @@ categoria COCO, definir um conjunto de synsets ImageNet correspondentes e usar o
 verbatim, o conjunto é unitário.
 
 
+### Medições da etapa 8
+
+`scripts/08_pointing_game.py` (n=300) e `scripts/09_occlusion_correlation.py`
+(n=100), VGG-16 em CPU, mesmo pool e mesma bateria de cinco métodos (ver §4).
+Custo medido: bateria de mapas 2,8 s/imagem; item com oclusão 12,4 s/imagem (36
+forwards). As duas rodadas levaram 18,6 e 22,9 min — rodaram em paralelo, então o
+tempo de parede não é a soma.
+
+Pool: val2017, objeto verbatim com lado ≥ 60 px, a imagem entra pelo maior objeto,
+teto de 20 por categoria, semente 0 — 18 categorias, de `toaster` (2 imagens) a
+`broccoli` (20). O cue é o rótulo de ground truth; o modelo o coloca no top-5 em
+**57,7%** das imagens e o rank mediano é 4 (probabilidade média 31,3%). Em ~40%
+dos casos o mapa é pedido para uma classe que o VGG-16 não põe no top-5 — isso é
+do protocolo, não um defeito do experimento, e é o que a coluna de diagnóstico
+registra no JSON.
+
+Pointing game (pico depois do upsample para 224; hit = dentro de qualquer
+instância anotada do cue):
+
+| Método | Acerto | IC 95% (Wilson) | pico em outro objeto | pico fora |
+|---|---|---|---|---|
+| vanilla | 50,0% | 44,4 – 55,6 | 64 | 86 |
+| deconv | 34,7% | 29,5 – 40,2 | 66 | 130 |
+| guided | 50,0% | 44,4 – 55,6 | 86 | 64 |
+| Grad-CAM | **69,0%** | 63,6 – 74,0 | 39 | 54 |
+| Guided Grad-CAM | 63,7% | 58,1 – 68,9 | 58 | 51 |
+
+A referência de 70,58% do paper **não é este protocolo**: é a versão modificada do
+§4.2/apêndice D (mapas das top-5 classes com opção de rejeitar). A linha da figura
+serve como ordem de grandeza; a comparação válida é a ordenação entre métodos,
+todos medidos no mesmo protocolo.
+
+Spearman vs oclusão (grade 6×6, mapa do método pela média de cada célula):
+
+| Método | rho médio | mediana | desvio | válidos |
+|---|---|---|---|---|
+| vanilla | +0,046 | +0,039 | 0,242 | 100/100 |
+| deconv | −0,009 | −0,044 | 0,311 | 100/100 |
+| guided | +0,070 | +0,040 | 0,325 | 100/100 |
+| Grad-CAM | **+0,263** | +0,304 | 0,275 | 100/100 |
+| Guided Grad-CAM | +0,234 | +0,242 | 0,305 | 100/100 |
+
+Referência do paper para a oclusão: Grad-CAM 0,254, Guided Grad-CAM 0,261,
+Guided Backprop 0,168.
+
+Leitura do que os números sustentam:
+
+- A **ordenação** é a do paper nas duas métricas: Grad-CAM e Guided Grad-CAM muito
+  acima das saliências por gradiente; `deconv` é o pior no pointing game, na mesma
+  direção da Tabela 3 (Deconv-ReLU com erro 83,95).
+- `vanilla` e `guided` empatam em 50,0%, mas concordam em só **68%** das imagens
+  (75 acertos exclusivos de cada um): o empate é de contagem, não de
+  comportamento. Mesma ressalva para a oclusão, onde os dois ficam próximos de
+  zero por caminhos diferentes.
+- Grad-CAM fica **à frente** do Guided Grad-CAM: +5,3 pontos no pointing e +0,029
+  no Spearman (58 imagens a favor contra 42). O paper tem o GGC numericamente
+  acima (70,58% e 0,261) com diferença também pequena; não reivindicamos a
+  inversão, só a mesma faixa — e o sinal contrário é consistente com o termo de
+  detalhe do produto ser quase invariante à classe (medido na Fase 6).
+- **Ressalva da oclusão**: em 53 das 100 imagens a queda máxima é < 0,01, isto é,
+  o cue praticamente não tem sinal de oclusão. Separando as 47 com queda ≥ 0,01
+  (contagem derivada do `per_image`, não um campo do JSON), tudo sobe — Grad-CAM
+  0,377, Guided Grad-CAM 0,380, guided 0,235, vanilla 0,105,
+  deconv 0,113 — o que mostra que o rho absoluto é diluído por casos sem sinal, e
+  não porque o método ordena ao contrário. Esse filtro é diagnóstico, não um
+  protocolo novo: `n=47` foi escolhido depois de ver o número.
+- O paper não fixa o tamanho do patch nem a grade; a grade 6×6 (38 px) é a nossa
+  escolha, e outra granularidade mudaria o rho — sobretudo o das saliências pixel
+  a pixel, que só podem concordar com uma referência mais fina. A base também é
+  outra (PASCAL VOC 2007 val, 2510 imagens): 0,263 contra 0,254 e 0,234 contra
+  0,261 são a mesma faixa, não uma reprodução.
+
+Controles de implementação: `tests/test_eval.py` (16 testes) fixa o pico medido
+após o upsample, o mapa constante como degenerado, o tiling sem sobras da grade, a
+média por célula, a oclusão de um patch informativo e o IC de Wilson. Total:
+**100 testes**.
+
+
 ---
 
 ## 1. Estrutura do repositório
@@ -372,7 +450,8 @@ GradCAM-Study/
 │   ├── core.py            # cam(), gradcam(), counterfactual()
 │   ├── guided.py          # guided_gradcam = gradcam ⊙ guided
 │   ├── viz.py             # colormap, overlay, grade de figuras
-│   ├── metrics.py         # MapFn plugável: pointing game, Spearman vs oclusão
+│   ├── metrics.py         # MapFn plugável + spearman/summarize
+│   ├── eval.py            # Fase 8: pointing game, oclusão, pool, IC de Wilson
 │   └── data.py            # COCO val2017: leitura de imagens e boxes
 ├── scripts/
 │   ├── 01_forward_sanity.py
@@ -495,7 +574,7 @@ MapFn = Callable[[nn.Module, torch.Tensor, int], torch.Tensor]   # (modelo, entr
 | **5** | CAM em ResNet18 (`conv → GAP → fc`) e equivalência numérica com Grad-CAM | Spearman > 0,9 na mesma camada; valida a prova da §3.1 — **medido: Spearman 1,000000 e max abs(Z·Grad-CAM − CAM) 5,7 × 10⁻⁶**. Sem fixar a camada, os dois métodos capturam tensores diferentes e o número cai para 0,987 (ver seção 0) |
 | **6** | Guided Grad-CAM = Fase 4 ⊙ Fase 2 | detalhe fino (listras) sem perder discriminação de classe — **medido: detalhe 1,13–1,27, em cima do Guided Backprop (1,14–1,24) e ~20× o CAM (0,05–0,06); top5% na box certa 0,80–0,96 em 3 dos 4 casos** (`broccoli` em 0,63 é o pior). Ressalva medida: o rho entre classes **sobe** nos quatro casos, porque o termo de detalhe é quase invariante à classe |
 | **7** | Counterfactual (negar o gradiente em (1)) | mapa desloca para a evidência contrária — **cumprido no deslocamento: pico sai do objeto em `95786` (`cup` 9,5 e `vase` 9,2 células de 14); acende evidência complementar, não necessariamente o objeto vizinho** |
-| **8** | Pointing game + Spearman vs oclusão, **todos os métodos na mesma bateria** | tabela comparável em ordenação à Tabela 1/2 do paper |
+| **8** | Pointing game + Spearman vs oclusão, **todos os métodos na mesma bateria** | tabela comparável em ordenação à Tabela 1 e ao §5.3 do paper — **medido (300 e 100 imagens): Grad-CAM 69,0% e Guided Grad-CAM 63,7% no pointing game contra 50,0% (vanilla/guided) e 34,7% (deconv); Spearman vs oclusão 0,263/0,234 contra 0,046/0,070 das saliências. Ordenação do paper; na oclusão, 53/100 imagens sem sinal do cue** |
 | **9** | Ablações (ReLU on/off, GAP vs GMP, camada conv3_3/4_3/5_3, gradiente vanilla/guided/deconv) | reproduzir a **direção** da Tabela 3 |
 | **10** | Sanity checks (cascade randomization, Adebayo et al.) | queda monotônica da correlação ao randomizar camadas de cima para baixo |
 | **11** | README com tabela "paper vs. nosso número" + material do seminário | — |
@@ -512,15 +591,36 @@ O que **não** é replicável, e por quê:
 | Estudo humano (AMT) | 43–54 trabalhadores | análise qualitativa curada |
 | IoU de segmentação VOC 2012 | +2 GB e outro modelo | opcional, se houver tempo |
 
-**Conjunto de avaliação**: COCO val2017, subset de ~300–500 imagens com anotações de
-instância. Serve para pointing game (ponto de máximo dentro da box GT da classe predita)
-e para a correlação com oclusão (referência de fidelidade local).
+**Conjunto de avaliação**: COCO val2017, imagens com um objeto de uma das 18
+categorias verbatim e lado mínimo de 60 px. A imagem entra pelo **maior** objeto
+verbatim, então é avaliada uma vez, com um cue; `per_category=20` limita a categoria
+dominante (`dining table` sozinha tem 323 imagens no pool) e a amostra é sorteada com
+semente 0 — `n=300` no pointing game e `n=100` na oclusão, o item caro (36 forwards
+por imagem). Fonte: `gradcam.eval.evaluation_pool`.
 
 **Cue do pointing game** (ver restrição COCO × ImageNet na seção 0): o paper usa o
-rótulo de ground truth, não a predição. Para cada categoria COCO, mapear para um
-conjunto de synsets ImageNet e usar o `argmax` do modelo restrito a esse conjunto.
-Sem isso, usar a predição do modelo como cue gera muitos casos insolúveis, porque o
-VGG-16 pré-treinado no ImageNet acerta ~63% nesse domínio.
+rótulo de ground truth, não a predição. Para as 18 categorias verbatim o conjunto de
+synsets é unitário, então o cue é o próprio nome do objeto; mapear `dog` ou `person`
+para um synset ficaria como chute e está fora.
+
+**Protocolo do pointing game**: mapa → upsample bilinear para 224 → `argmax` → hit se
+o pixel cai dentro de qualquer instância anotada do cue. O pico é medido **depois** do
+upsample para que um CAM 14×14 e uma saliência 224×224 sejam comparados no mesmo
+espaço. Três desfechos: acerto, "outro objeto" (caiu na box de outra categoria) e
+fora; mapa constante é marcado como degenerado. IC de Wilson, porque perto de 0 ou 1
+a aproximação normal devolve limites fora de [0, 1].
+
+**Protocolo da oclusão**: grade 6×6 = 36 patches (o paper não fixa tamanho); o patch
+recebe `0,0` no espaço normalizado (= cor média do ImageNet); a referência é a queda
+de `p(y=c)`; a correlação é de Spearman entre as 36 células da oclusão e o mapa do
+método **reduzido à média por célula**. Não o contrário: interpolar 36 valores para
+224 px inventaria estrutura e criaria milhares de empates, inflando a correlação.
+Queda negativa (ocluir um patch que *ajuda* a classe) entra com sinal.
+
+Métodos na bateria: `vanilla`, `deconv`, `guided`, `grad-cam`, `guided grad-cam`.
+`counterfactual` fica fora porque explica a evidência **contra** a classe — apontar
+para a box do cue não é acerto nem erro na mesma escala; `cam` fica fora porque exige
+`conv → GAP → fc` e a bateria roda no VGG-16.
 
 **Ablações**: reproduzimos a *direção* dos efeitos, não os números absolutos — aqueles
 dependem do setup Caffe original e de avaliação 10-crop. Isso fica explícito no README.
@@ -534,10 +634,10 @@ dependem do setup Caffe original e de avaliação 10-crop. Isso fica explícito 
 | Localização fraca ILSVRC-15, VGG-16 top-1 | 56,51 (CAM 57,20; Backprop 61,12; c-MWP 70,92) |
 | AlexNet top-1 | 68,3 (c-MWP 92,6) |
 | Segmentação VOC 2012 (IoU) | 49,6 (CAM 44,6) |
-| Pointing game | 70,58% (c-MWP 60,30%) |
+| Pointing game (protocolo top-5, §4.2) | 70,58% (c-MWP 60,30%) |
 | Estudo humano, discriminação de classe | GB 44,44% → Guided Grad-CAM 61,23% |
 | Confiabilidade relativa | GB +1,00 → Guided Grad-CAM +1,27 |
-| Spearman vs oclusão | Grad-CAM 0,254 / Guided Grad-CAM 0,261 (GB 0,168) |
+| Rank correlation com oclusão (§5.3, VOC 2007 val) | Grad-CAM 0,254 / Guided Grad-CAM 0,261 (GB 0,168; c-MWP 0,220; CAM 0,208) |
 | Ablação: sem ReLU em (2) | erro 59,65 → 74,98 |
 | Ablação: Deconv-ReLU | erro 83,95 |
 

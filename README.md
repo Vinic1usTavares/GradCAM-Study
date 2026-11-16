@@ -55,7 +55,8 @@ gradcam/
   core.py          cam(), gradcam(), counterfactual()
   guided.py        guided_gradcam()
   viz.py           colormap, overlay, grades de figuras
-  metrics.py       MapFn plugável: pointing game, Spearman vs oclusão
+  metrics.py       MapFn plugável + spearman/summarize
+  eval.py          Fase 8: pointing game, oclusão, IC de Wilson
 scripts/           um executável por experimento
 ```
 
@@ -71,11 +72,11 @@ scripts/           um executável por experimento
 | 5. CAM vs Grad-CAM (§3.1) | **concluída** — `Spearman` 1,000000 na mesma camada, diferença 5,7×10⁻⁶ |
 | 6. Guided Grad-CAM | **concluída** — detalhe 1,13–1,27 (≈ Guided Backprop, ~20× o CAM), top5% na box certa 0,80–0,96 em 3 dos 4 casos |
 | 7. Counterfactual | **concluída** — pico desloca 9,5 (`cup`) e 9,2 (`vase`) células de 14; rho −0,60/−0,55 |
-| 8. Pointing game + oclusão | pendente |
+| 8. Pointing game + oclusão | **concluída** — 69,0% / 63,7% (Grad-CAM / Guided Grad-CAM) contra 50,0% das saliências; Spearman 0,263 / 0,234 |
 | 9. Ablações | pendente |
 | 10. Sanity checks (Adebayo) | pendente |
 
-Figuras das Fases 1–7 em `results/figures/`; métricas em `results/metrics/`
+Figuras das Fases 1–8 em `results/figures/`; métricas em `results/metrics/`
 (`--overlay` troca cinza por jet):
 
 ```powershell
@@ -85,6 +86,10 @@ Figuras das Fases 1–7 em `results/figures/`; métricas em `results/metrics/`
 .\.venv\Scripts\python.exe scripts\05_cam_vs_gradcam.py        # ~5 s em CPU
 .\.venv\Scripts\python.exe scripts\06_guided_gradcam.py        # ~13 s em CPU
 .\.venv\Scripts\python.exe scripts\07_counterfactual.py        # ~8 s em CPU (2 classes)
+
+# avaliacao em lote (Fase 8): pool do val2017, todos os metodos na mesma bateria
+.\.venv\Scripts\python.exe scripts\08_pointing_game.py          # ~14 min (n=300)
+.\.venv\Scripts\python.exe scripts\09_occlusion_correlation.py  # ~21 min (n=100, 36 patches)
 
 # figura de dois objetos: uma classe por objeto (5 s)
 .\.venv\Scripts\python.exe scripts\04_gradcam.py --images 95786 --classes cup,vase
@@ -158,6 +163,30 @@ negativo por construção. O contrafactual **não** é o mapa da "outra classe":
 se pode afirmar sem vender mais do que a medida mostra. Notebook:
 `notebooks/07_counterfactual.ipynb` (bônus, primeiro item da lista de corte).
 
+A Fase 8 troca o caso único pela avaliação em lote: **300 imagens** no pointing
+game e **100** na oclusão, os cinco métodos na mesma bateria (`vanilla`, `deconv`,
+`guided`, `grad-cam`, `guided grad-cam`), cue de ground truth e semente 0. O
+pointing game pede o pico do mapa e verifica se ele cai na box do cue: **69,0%**
+para o Grad-CAM (IC 95% 63,6–74,0) e **63,7%** para o Guided Grad-CAM
+(58,1–68,9), contra 50,0% de `vanilla` e `guided` e **34,7%** de `deconv` — o
+pior, na mesma direção da Tabela 3 do paper. A oclusão oclui 36 patches de uma
+grade 6×6 e compara a ordenação das quedas de probabilidade com o mapa reduzido
+à média de cada célula: **0,263** (Grad-CAM) e **0,234** (Guided Grad-CAM) contra
+0,046, 0,070 e −0,009 das saliências, com o paper em 0,254 e 0,261. No pointing
+game, os 70,58% do paper vêm do **protocolo modificado** (top-5 com opção de
+rejeitar, §4.2/apêndice D), não do cue de ground truth: a linha da figura é
+ordem de grandeza, e a comparação que vale é a ordenação entre os métodos.
+
+Duas ressalvas que os números obrigam a escrever. Primeiro, os dois métodos de
+CAM ficam **à frente** do padrão do paper na oclusão (lá o GGC é 0,261 e o
+Grad-CAM 0,254): a diferença de 0,029 aqui é pequena e não reivindicamos a
+inversão, só a mesma faixa. Segundo, em 53 das 100 imagens o cue não tem sinal de
+oclusão (queda máxima < 0,01, porque o VGG-16 põe o rótulo de GT no top-5 em só
+57,7% dos casos); filtrando as 47 com sinal, tudo sobe — 0,377 / 0,380 para
+Grad-CAM / GGC — e a conclusão não muda. O filtro é diagnóstico, não protocolo.
+JSON: `pointing_game.json` e `occlusion_spearman.json`; o notebook `08_numeros`
+fica para depois das ablações da Fase 9, que compartilham o mesmo cache.
+
 
 ## Reprodutibilidade
 
@@ -179,8 +208,10 @@ restritas às 18 categorias que são classes ImageNet verbatim; não-discrimina�
 de classe de 0,999 (deconv/guided) e 0,642 (vanilla) em 16 imagens; equivalência
 CAM = Z · Grad-CAM exata (1,000000, 5,7×10⁻⁶) na mesma camada; Guided Grad-CAM
 com detalhe de 1,13–1,27 (≈ Guided Backprop) mantendo 0,80–0,96 do top5% na box
-de ground truth certa em 3 dos 4 casos; e contrafactual deslocando o pico 9,5 e
-9,2 células de 14 em `95786`.
+de ground truth certa em 3 dos 4 casos; contrafactual deslocando o pico 9,5 e
+9,2 células de 14 em `95786`; e, na avaliação em lote (Fase 8), pointing game de
+**69,0%** (Grad-CAM) e 63,7% (Guided Grad-CAM) contra 50,0% das saliências, com
+Spearman vs oclusão de 0,263 e 0,234 contra ~0,05.
 
 Decisão de ambiente: **CPU**, não GPU. Não existe wheel CUDA do torch 2.15 para
 Python 3.14 (os índices param em 2.14.1+cu126), e ~330 ms/forward é suficiente

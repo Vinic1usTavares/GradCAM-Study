@@ -1,0 +1,1801 @@
+{
+  "script": "09_occlusion_correlation.py",
+  "generated_at": "2026-11-16T02:40:12+00:00",
+  "model": "vgg16",
+  "seed": 0,
+  "n_images": 100,
+  "protocol": {
+    "cue": "rotulo de ground truth (COCO verbatim), nao a predicao",
+    "grid": 6,
+    "n_cells": 36,
+    "patch_value": "0.0 no espaco normalizado (cor media do ImageNet)",
+    "reference": "queda de softmax p(classe do cue) ao ocluir cada patch",
+    "correlation": "Spearman entre 36 celulas; mapa do metodo reduzido a media por celula",
+    "not_upsampled": "a oclusao NAO e' ampliada para 224: interpolar 36 valores criaria empates",
+    "sign": "quedas negativas entram na correlacao; so' a figura usa clamp(min=0)",
+    "min_side_px": 60.0,
+    "per_category_cap": 20,
+    "one_cue_per_image": "a imagem entra pelo maior objeto verbatim",
+    "categories": {
+      "backpack": 5,
+      "banana": 1,
+      "broccoli": 7,
+      "cup": 9,
+      "dining table": 6,
+      "kite": 8,
+      "laptop": 6,
+      "microwave": 7,
+      "mouse": 3,
+      "orange": 8,
+      "parking meter": 3,
+      "pizza": 6,
+      "refrigerator": 2,
+      "toaster": 2,
+      "traffic light": 8,
+      "umbrella": 6,
+      "vase": 6,
+      "zebra": 7
+    },
+    "excluded": {
+      "counterfactual": "explica a evidencia contra a classe; a oclusao mede a favor dela",
+      "cam": "exige arquitetura conv->GAP->fc; a bateria roda no VGG-16"
+    }
+  },
+  "display_scale": {
+    "high": 0.99,
+    "gamma": 0.5,
+    "applies_to": "figuras apenas"
+  },
+  "paper": {
+    "grad-cam": 0.254,
+    "guided grad-cam": 0.261,
+    "guided (guided backprop)": 0.168,
+    "c-mwp": 0.22,
+    "cam": 0.208,
+    "note": "§5.3: rank correlation com oclusao (VOC 2007 val, 2510 imagens, VGG-16)"
+  },
+  "aggregate": {
+    "vanilla": {
+      "n_valid": 100,
+      "mean": 0.0459073968715922,
+      "median": 0.039382239382239385,
+      "std": 0.2417475279249424,
+      "n": 100,
+      "degenerate": 0
+    },
+    "deconv": {
+      "n_valid": 100,
+      "mean": -0.008737902427915981,
+      "median": -0.04427284427284428,
+      "std": 0.3107842206444874,
+      "n": 100,
+      "degenerate": 0
+    },
+    "guided": {
+      "n_valid": 100,
+      "mean": 0.07007613398752131,
+      "median": 0.039768339768339774,
+      "std": 0.32494546526183815,
+      "n": 100,
+      "degenerate": 0
+    },
+    "grad-cam": {
+      "n_valid": 100,
+      "mean": 0.2633064243184247,
+      "median": 0.3042830115218833,
+      "std": 0.2751150776675153,
+      "n": 100,
+      "degenerate": 0
+    },
+    "guided grad-cam": {
+      "n_valid": 100,
+      "mean": 0.23394977562147395,
+      "median": 0.2423662393633575,
+      "std": 0.30543362056166956,
+      "n": 100,
+      "degenerate": 0
+    }
+  },
+  "per_image": [
+    {
+      "image_id": 9448,
+      "cue": "umbrella",
+      "cue_idx": 879,
+      "spearman": {
+        "vanilla": 0.23938223938223938,
+        "deconv": -0.15572715572715573,
+        "guided": 0.23783783783783782,
+        "grad-cam": 0.3168597168597169,
+        "guided grad-cam": 0.33127413127413136
+      },
+      "occlusion": {
+        "max_drop": 0.006543397903442383,
+        "min_drop": -0.0019732117652893066,
+        "positive_cells": 32
+      }
+    },
+    {
+      "image_id": 16439,
+      "cue": "laptop",
+      "cue_idx": 620,
+      "spearman": {
+        "vanilla": 0.32277992277992285,
+        "deconv": -0.31145431145431146,
+        "guided": -0.46332046332046334,
+        "grad-cam": -0.037582856117466215,
+        "guided grad-cam": -0.23603603603603607
+      },
+      "occlusion": {
+        "max_drop": 0.0033479889389127493,
+        "min_drop": -0.024193352088332176,
+        "positive_cells": 12
+      }
+    },
+    {
+      "image_id": 19221,
+      "cue": "broccoli",
+      "cue_idx": 937,
+      "spearman": {
+        "vanilla": -0.137966537966538,
+        "deconv": 0.06435006435006435,
+        "guided": 0.444015444015444,
+        "grad-cam": 0.3433719433719434,
+        "guided grad-cam": 0.372972972972973
+      },
+      "occlusion": {
+        "max_drop": 0.14082753658294678,
+        "min_drop": -0.019272923469543457,
+        "positive_cells": 15
+      }
+    },
+    {
+      "image_id": 24027,
+      "cue": "kite",
+      "cue_idx": 21,
+      "spearman": {
+        "vanilla": -0.296010296010296,
+        "deconv": 0.009523809523809525,
+        "guided": 0.004118404118404119,
+        "grad-cam": 0.1306702115911842,
+        "guided grad-cam": 0.1305019305019305
+      },
+      "occlusion": {
+        "max_drop": 0.00013228571333456784,
+        "min_drop": -0.00011081881530117244,
+        "positive_cells": 24
+      }
+    },
+    {
+      "image_id": 25986,
+      "cue": "broccoli",
+      "cue_idx": 937,
+      "spearman": {
+        "vanilla": 0.18635778635778638,
+        "deconv": 0.2671814671814672,
+        "guided": 0.3444015444015444,
+        "grad-cam": 0.04453024453024454,
+        "guided grad-cam": 0.16602316602316602
+      },
+      "occlusion": {
+        "max_drop": 0.018878959119319916,
+        "min_drop": -0.019157370552420616,
+        "positive_cells": 14
+      }
+    },
+    {
+      "image_id": 29640,
+      "cue": "broccoli",
+      "cue_idx": 937,
+      "spearman": {
+        "vanilla": 0.41235521235521244,
+        "deconv": 0.02084942084942085,
+        "guided": -0.00025740025740025744,
+        "grad-cam": 0.18558558558558558,
+        "guided grad-cam": 0.11891891891891891
+      },
+      "occlusion": {
+        "max_drop": 0.20784924924373627,
+        "min_drop": -0.27361950278282166,
+        "positive_cells": 14
+      }
+    },
+    {
+      "image_id": 31269,
+      "cue": "zebra",
+      "cue_idx": 340,
+      "spearman": {
+        "vanilla": 0.21471326911164723,
+        "deconv": -0.20904936992644788,
+        "guided": 0.14134002966701956,
+        "grad-cam": 0.3333977020378695,
+        "guided grad-cam": 0.21754521870424687
+      },
+      "occlusion": {
+        "max_drop": 6.830692291259766e-05,
+        "min_drop": -1.0013580322265625e-05,
+        "positive_cells": 12
+      }
+    },
+    {
+      "image_id": 32610,
+      "cue": "backpack",
+      "cue_idx": 414,
+      "spearman": {
+        "vanilla": -0.11454311454311455,
+        "deconv": -0.11891891891891891,
+        "guided": -0.1812097812097812,
+        "grad-cam": 0.37796087761486574,
+        "guided grad-cam": 0.3763191763191764
+      },
+      "occlusion": {
+        "max_drop": 0.0003202524967491627,
+        "min_drop": -0.0037192583549767733,
+        "positive_cells": 18
+      }
+    },
+    {
+      "image_id": 38576,
+      "cue": "mouse",
+      "cue_idx": 673,
+      "spearman": {
+        "vanilla": 0.1070785070785071,
+        "deconv": -0.14723294723294725,
+        "guided": -0.2947232947232947,
+        "grad-cam": -0.3348777348777349,
+        "guided grad-cam": -0.37451737451737455
+      },
+      "occlusion": {
+        "max_drop": 0.006879432592540979,
+        "min_drop": -0.01700514182448387,
+        "positive_cells": 13
+      }
+    },
+    {
+      "image_id": 39914,
+      "cue": "kite",
+      "cue_idx": 21,
+      "spearman": {
+        "vanilla": -0.3500643500643501,
+        "deconv": -0.39382239382239387,
+        "guided": -0.4141570141570142,
+        "grad-cam": 0.1084353090222568,
+        "guided grad-cam": -0.09703989703989704
+      },
+      "occlusion": {
+        "max_drop": 1.8574106661617407e-06,
+        "min_drop": -1.3382359611568972e-05,
+        "positive_cells": 21
+      }
+    },
+    {
+      "image_id": 45472,
+      "cue": "orange",
+      "cue_idx": 950,
+      "spearman": {
+        "vanilla": -0.056885456885456896,
+        "deconv": -0.35727155727155735,
+        "guided": -0.0972972972972973,
+        "grad-cam": -0.07842886365148977,
+        "guided grad-cam": -0.09601647487544449
+      },
+      "occlusion": {
+        "max_drop": 0.0004922709777019918,
+        "min_drop": -0.09589256346225739,
+        "positive_cells": 10
+      }
+    },
+    {
+      "image_id": 46031,
+      "cue": "laptop",
+      "cue_idx": 620,
+      "spearman": {
+        "vanilla": -0.08262548262548262,
+        "deconv": -0.06280566280566281,
+        "guided": -0.04890604890604891,
+        "grad-cam": 0.27464607464607466,
+        "guided grad-cam": 0.15752895752895751
+      },
+      "occlusion": {
+        "max_drop": 0.08521520346403122,
+        "min_drop": -0.10326637327671051,
+        "positive_cells": 27
+      }
+    },
+    {
+      "image_id": 50679,
+      "cue": "orange",
+      "cue_idx": 950,
+      "spearman": {
+        "vanilla": 0.4767052767052767,
+        "deconv": 0.4442728442728443,
+        "guided": 0.6635778635778636,
+        "grad-cam": 0.5093951093951095,
+        "guided grad-cam": 0.6383526383526384
+      },
+      "occlusion": {
+        "max_drop": 0.5352528095245361,
+        "min_drop": -0.002190113067626953,
+        "positive_cells": 32
+      }
+    },
+    {
+      "image_id": 51961,
+      "cue": "parking meter",
+      "cue_idx": 704,
+      "spearman": {
+        "vanilla": 0.11660231660231662,
+        "deconv": 0.11274131274131274,
+        "guided": 0.4960102960102961,
+        "grad-cam": 0.5467181467181468,
+        "guided grad-cam": 0.6453024453024453
+      },
+      "occlusion": {
+        "max_drop": 0.19625192880630493,
+        "min_drop": -0.0946185439825058,
+        "positive_cells": 30
+      }
+    },
+    {
+      "image_id": 53994,
+      "cue": "parking meter",
+      "cue_idx": 704,
+      "spearman": {
+        "vanilla": 0.6483912483912485,
+        "deconv": 0.5348777348777349,
+        "guided": 0.7755469755469757,
+        "grad-cam": 0.7804375804375805,
+        "guided grad-cam": 0.876962676962677
+      },
+      "occlusion": {
+        "max_drop": 0.01650989055633545,
+        "min_drop": -2.09808349609375e-05,
+        "positive_cells": 30
+      }
+    },
+    {
+      "image_id": 60449,
+      "cue": "laptop",
+      "cue_idx": 620,
+      "spearman": {
+        "vanilla": 0.30759330759330755,
+        "deconv": -0.15444015444015446,
+        "guided": 0.1966537966537967,
+        "grad-cam": 0.40772200772200773,
+        "guided grad-cam": 0.4046332046332046
+      },
+      "occlusion": {
+        "max_drop": 0.0005585706676356494,
+        "min_drop": -0.009207786992192268,
+        "positive_cells": 10
+      }
+    },
+    {
+      "image_id": 60770,
+      "cue": "zebra",
+      "cue_idx": 340,
+      "spearman": {
+        "vanilla": -0.24148806525986222,
+        "deconv": 0.07877968866686336,
+        "guided": -0.09242453670393447,
+        "grad-cam": 0.09229581172245267,
+        "guided grad-cam": -0.10426723500026033
+      },
+      "occlusion": {
+        "max_drop": 2.849102020263672e-05,
+        "min_drop": -5.0067901611328125e-06,
+        "positive_cells": 23
+      }
+    },
+    {
+      "image_id": 60855,
+      "cue": "orange",
+      "cue_idx": 950,
+      "spearman": {
+        "vanilla": 0.06460746460746461,
+        "deconv": -0.1093951093951094,
+        "guided": 0.068983268983269,
+        "grad-cam": 0.1940797940797941,
+        "guided grad-cam": 0.22342342342342345
+      },
+      "occlusion": {
+        "max_drop": 0.18040001392364502,
+        "min_drop": -0.11878561973571777,
+        "positive_cells": 12
+      }
+    },
+    {
+      "image_id": 66841,
+      "cue": "toaster",
+      "cue_idx": 859,
+      "spearman": {
+        "vanilla": -0.13075933075933077,
+        "deconv": 0.17760617760617764,
+        "guided": -0.024710424710424714,
+        "grad-cam": 0.3491246253717697,
+        "guided grad-cam": 0.3855855855855856
+      },
+      "occlusion": {
+        "max_drop": 0.02988423965871334,
+        "min_drop": -0.11966796219348907,
+        "positive_cells": 23
+      }
+    },
+    {
+      "image_id": 69795,
+      "cue": "vase",
+      "cue_idx": 883,
+      "spearman": {
+        "vanilla": 0.15263835263835265,
+        "deconv": 0.09961389961389963,
+        "guided": 0.06383526383526383,
+        "grad-cam": 0.4329774089369612,
+        "guided grad-cam": 0.35727155727155735
+      },
+      "occlusion": {
+        "max_drop": 0.0011303032515570521,
+        "min_drop": -0.0024155036080628633,
+        "positive_cells": 11
+      }
+    },
+    {
+      "image_id": 76417,
+      "cue": "traffic light",
+      "cue_idx": 920,
+      "spearman": {
+        "vanilla": -0.15135135135135136,
+        "deconv": -0.20875160875160878,
+        "guided": 0.08803088803088803,
+        "grad-cam": 0.704935688318741,
+        "guided grad-cam": 0.5979407979407979
+      },
+      "occlusion": {
+        "max_drop": 0.0032445068936794996,
+        "min_drop": -0.9941733479499817,
+        "positive_cells": 21
+      }
+    },
+    {
+      "image_id": 76731,
+      "cue": "laptop",
+      "cue_idx": 620,
+      "spearman": {
+        "vanilla": -0.2658944658944659,
+        "deconv": -0.22316602316602321,
+        "guided": -0.06640926640926641,
+        "grad-cam": 0.5728811389686372,
+        "guided grad-cam": 0.49678249678249686
+      },
+      "occlusion": {
+        "max_drop": 0.21626998484134674,
+        "min_drop": -0.3560599982738495,
+        "positive_cells": 25
+      }
+    },
+    {
+      "image_id": 85665,
+      "cue": "kite",
+      "cue_idx": 21,
+      "spearman": {
+        "vanilla": 0.3052767052767053,
+        "deconv": -0.38404118404118404,
+        "guided": 0.3647361647361648,
+        "grad-cam": 0.40025740025740025,
+        "guided grad-cam": 0.6664092664092665
+      },
+      "occlusion": {
+        "max_drop": 0.00016426430374849588,
+        "min_drop": -0.0010405551875010133,
+        "positive_cells": 13
+      }
+    },
+    {
+      "image_id": 85911,
+      "cue": "kite",
+      "cue_idx": 21,
+      "spearman": {
+        "vanilla": 0.16164736164736168,
+        "deconv": 0.34002574002574004,
+        "guided": -0.07850707850707851,
+        "grad-cam": -0.1495005421338373,
+        "guided grad-cam": -0.11976821542838338
+      },
+      "occlusion": {
+        "max_drop": 1.5039984191389522e-06,
+        "min_drop": -4.662058927351609e-06,
+        "positive_cells": 26
+      }
+    },
+    {
+      "image_id": 91615,
+      "cue": "microwave",
+      "cue_idx": 651,
+      "spearman": {
+        "vanilla": -0.07696267696267697,
+        "deconv": -0.25817245817245815,
+        "guided": 0.2676962676962677,
+        "grad-cam": 0.39974259974259974,
+        "guided grad-cam": 0.3580437580437581
+      },
+      "occlusion": {
+        "max_drop": 0.0461580753326416,
+        "min_drop": -0.02247929573059082,
+        "positive_cells": 17
+      }
+    },
+    {
+      "image_id": 95786,
+      "cue": "vase",
+      "cue_idx": 883,
+      "spearman": {
+        "vanilla": -0.0061776061776061784,
+        "deconv": -0.004118404118404119,
+        "guided": -0.39562419562419565,
+        "grad-cam": 0.08983268983268984,
+        "guided grad-cam": -0.059716859716859715
+      },
+      "occlusion": {
+        "max_drop": 0.007540891878306866,
+        "min_drop": -0.07769641280174255,
+        "positive_cells": 10
+      }
+    },
+    {
+      "image_id": 97585,
+      "cue": "vase",
+      "cue_idx": 883,
+      "spearman": {
+        "vanilla": 0.34671814671814677,
+        "deconv": 0.3516087516087516,
+        "guided": 0.034749034749034756,
+        "grad-cam": 0.36164736164736166,
+        "guided grad-cam": 0.28777348777348777
+      },
+      "occlusion": {
+        "max_drop": 0.1444549858570099,
+        "min_drop": -0.046365395188331604,
+        "positive_cells": 31
+      }
+    },
+    {
+      "image_id": 114049,
+      "cue": "backpack",
+      "cue_idx": 414,
+      "spearman": {
+        "vanilla": -0.013384813384813388,
+        "deconv": -0.03243243243243244,
+        "guided": -0.3395109395109395,
+        "grad-cam": 0.3612255526523546,
+        "guided grad-cam": 0.16010296010296013
+      },
+      "occlusion": {
+        "max_drop": 0.00016881716146599501,
+        "min_drop": -0.0003662631206680089,
+        "positive_cells": 15
+      }
+    },
+    {
+      "image_id": 116206,
+      "cue": "cup",
+      "cue_idx": 968,
+      "spearman": {
+        "vanilla": 0.1917631917631918,
+        "deconv": -0.11248391248391248,
+        "guided": -0.38790218790218794,
+        "grad-cam": -0.13840731812735754,
+        "guided grad-cam": -0.2625482625482626
+      },
+      "occlusion": {
+        "max_drop": 2.6311599299333466e-07,
+        "min_drop": -4.092120889254147e-06,
+        "positive_cells": 9
+      }
+    },
+    {
+      "image_id": 125211,
+      "cue": "zebra",
+      "cue_idx": 340,
+      "spearman": {
+        "vanilla": 0.14371153708036694,
+        "deconv": 0.1462235142694442,
+        "guided": 0.43245670449850987,
+        "grad-cam": 0.37507785712695585,
+        "guided grad-cam": 0.46841764110003686
+      },
+      "occlusion": {
+        "max_drop": 1.0728836059570312e-06,
+        "min_drop": 0.0,
+        "positive_cells": 29
+      }
+    },
+    {
+      "image_id": 134322,
+      "cue": "kite",
+      "cue_idx": 21,
+      "spearman": {
+        "vanilla": -0.12895752895752896,
+        "deconv": 0.1770913770913771,
+        "guided": 0.2815958815958816,
+        "grad-cam": -0.19474292186652975,
+        "guided grad-cam": 0.003603835518113198
+      },
+      "occlusion": {
+        "max_drop": 3.0389906896743923e-05,
+        "min_drop": -6.203300290508196e-05,
+        "positive_cells": 18
+      }
+    },
+    {
+      "image_id": 140840,
+      "cue": "kite",
+      "cue_idx": 21,
+      "spearman": {
+        "vanilla": 0.025225225225225228,
+        "deconv": -0.03680823680823681,
+        "guided": 0.023938223938223938,
+        "grad-cam": 0.36547051009580683,
+        "guided grad-cam": 0.24560763960187584
+      },
+      "occlusion": {
+        "max_drop": 5.12746378689144e-09,
+        "min_drop": -6.368607330387022e-08,
+        "positive_cells": 3
+      }
+    },
+    {
+      "image_id": 140987,
+      "cue": "dining table",
+      "cue_idx": 532,
+      "spearman": {
+        "vanilla": 0.22187902187902186,
+        "deconv": 0.009009009009009009,
+        "guided": 0.22265122265122267,
+        "grad-cam": -0.3523809523809524,
+        "guided grad-cam": 0.024195624195624193
+      },
+      "occlusion": {
+        "max_drop": 0.0008033118792809546,
+        "min_drop": -0.0025381608866155148,
+        "positive_cells": 19
+      }
+    },
+    {
+      "image_id": 148707,
+      "cue": "orange",
+      "cue_idx": 950,
+      "spearman": {
+        "vanilla": 0.29292149292149294,
+        "deconv": 0.7765765765765766,
+        "guided": 0.13693693693693695,
+        "grad-cam": 0.07824967824967825,
+        "guided grad-cam": 0.1052767052767053
+      },
+      "occlusion": {
+        "max_drop": 0.573448896408081,
+        "min_drop": -0.11409956216812134,
+        "positive_cells": 22
+      }
+    },
+    {
+      "image_id": 153510,
+      "cue": "broccoli",
+      "cue_idx": 937,
+      "spearman": {
+        "vanilla": 0.209009009009009,
+        "deconv": -0.436036036036036,
+        "guided": -0.018532818532818532,
+        "grad-cam": -0.0833976833976834,
+        "guided grad-cam": -0.03783783783783784
+      },
+      "occlusion": {
+        "max_drop": 0.03600428253412247,
+        "min_drop": -0.10922825336456299,
+        "positive_cells": 4
+      }
+    },
+    {
+      "image_id": 155451,
+      "cue": "traffic light",
+      "cue_idx": 920,
+      "spearman": {
+        "vanilla": -0.13822393822393822,
+        "deconv": -0.698069498069498,
+        "guided": 0.5070785070785071,
+        "grad-cam": 0.6064350064350065,
+        "guided grad-cam": 0.7006435006435008
+      },
+      "occlusion": {
+        "max_drop": 0.49177300930023193,
+        "min_drop": -0.22184181213378906,
+        "positive_cells": 21
+      }
+    },
+    {
+      "image_id": 157928,
+      "cue": "backpack",
+      "cue_idx": 414,
+      "spearman": {
+        "vanilla": -0.28005148005148006,
+        "deconv": 0.05791505791505792,
+        "guided": -0.29575289575289576,
+        "grad-cam": -0.1381041253905522,
+        "guided grad-cam": -0.17606177606177606
+      },
+      "occlusion": {
+        "max_drop": 8.405360131291673e-05,
+        "min_drop": -0.0017119022086262703,
+        "positive_cells": 11
+      }
+    },
+    {
+      "image_id": 164969,
+      "cue": "pizza",
+      "cue_idx": 963,
+      "spearman": {
+        "vanilla": -0.028571428571428574,
+        "deconv": 0.6105534105534106,
+        "guided": 0.7070785070785072,
+        "grad-cam": 0.677136994636987,
+        "guided grad-cam": 0.7644787644787645
+      },
+      "occlusion": {
+        "max_drop": 0.35260874032974243,
+        "min_drop": -0.017898917198181152,
+        "positive_cells": 31
+      }
+    },
+    {
+      "image_id": 171190,
+      "cue": "dining table",
+      "cue_idx": 532,
+      "spearman": {
+        "vanilla": 0.06177606177606178,
+        "deconv": -0.2851994851994852,
+        "guided": -0.06435006435006435,
+        "grad-cam": 0.5703800280992581,
+        "guided grad-cam": 0.4947232947232947
+      },
+      "occlusion": {
+        "max_drop": 0.0026527452282607555,
+        "min_drop": -0.01628069579601288,
+        "positive_cells": 5
+      }
+    },
+    {
+      "image_id": 172396,
+      "cue": "pizza",
+      "cue_idx": 963,
+      "spearman": {
+        "vanilla": 0.2993564993564994,
+        "deconv": 0.19202059202059202,
+        "guided": 0.7971685971685972,
+        "grad-cam": 0.802059202059202,
+        "guided grad-cam": 0.8429858429858431
+      },
+      "occlusion": {
+        "max_drop": 0.09461438655853271,
+        "min_drop": -0.17996381223201752,
+        "positive_cells": 20
+      }
+    },
+    {
+      "image_id": 185599,
+      "cue": "orange",
+      "cue_idx": 950,
+      "spearman": {
+        "vanilla": 0.2012870012870013,
+        "deconv": 0.3287001287001287,
+        "guided": 0.04478764478764479,
+        "grad-cam": 0.44350064350064355,
+        "guided grad-cam": 0.5400257400257401
+      },
+      "occlusion": {
+        "max_drop": 0.11221075057983398,
+        "min_drop": -0.24922382831573486,
+        "positive_cells": 12
+      }
+    },
+    {
+      "image_id": 189436,
+      "cue": "dining table",
+      "cue_idx": 532,
+      "spearman": {
+        "vanilla": -0.3415701415701416,
+        "deconv": -0.6138996138996139,
+        "guided": -0.43629343629343637,
+        "grad-cam": 0.33386961907091556,
+        "guided grad-cam": -0.05637065637065637
+      },
+      "occlusion": {
+        "max_drop": 4.676041100992734e-07,
+        "min_drop": -8.288505341624841e-06,
+        "positive_cells": 4
+      }
+    },
+    {
+      "image_id": 192191,
+      "cue": "pizza",
+      "cue_idx": 963,
+      "spearman": {
+        "vanilla": 0.26640926640926643,
+        "deconv": 0.28442728442728443,
+        "guided": 0.29292149292149294,
+        "grad-cam": 0.5122265122265123,
+        "guided grad-cam": 0.43783783783783786
+      },
+      "occlusion": {
+        "max_drop": 0.057606689631938934,
+        "min_drop": -0.04822885990142822,
+        "positive_cells": 24
+      }
+    },
+    {
+      "image_id": 203389,
+      "cue": "backpack",
+      "cue_idx": 414,
+      "spearman": {
+        "vanilla": -0.29755469755469754,
+        "deconv": -0.12277992277992279,
+        "guided": -0.46151866151866155,
+        "grad-cam": 0.31718881199922855,
+        "guided grad-cam": 0.09703989703989704
+      },
+      "occlusion": {
+        "max_drop": 7.555607589893043e-05,
+        "min_drop": -0.0016067232936620712,
+        "positive_cells": 2
+      }
+    },
+    {
+      "image_id": 215114,
+      "cue": "refrigerator",
+      "cue_idx": 760,
+      "spearman": {
+        "vanilla": -0.3647361647361648,
+        "deconv": 0.18146718146718147,
+        "guided": 0.18661518661518664,
+        "grad-cam": 0.3626769626769627,
+        "guided grad-cam": 0.3366795366795367
+      },
+      "occlusion": {
+        "max_drop": 0.014286816120147705,
+        "min_drop": -0.001681983470916748,
+        "positive_cells": 31
+      }
+    },
+    {
+      "image_id": 215644,
+      "cue": "microwave",
+      "cue_idx": 651,
+      "spearman": {
+        "vanilla": -0.07567567567567568,
+        "deconv": 0.1474903474903475,
+        "guided": 0.01415701415701416,
+        "grad-cam": 0.6887316302268756,
+        "guided grad-cam": 0.5086229086229086
+      },
+      "occlusion": {
+        "max_drop": 0.2823750972747803,
+        "min_drop": -0.24426421523094177,
+        "positive_cells": 19
+      }
+    },
+    {
+      "image_id": 232348,
+      "cue": "toaster",
+      "cue_idx": 859,
+      "spearman": {
+        "vanilla": 0.44555984555984557,
+        "deconv": 0.2888030888030888,
+        "guided": 0.6087516087516088,
+        "grad-cam": 0.5817245817245817,
+        "guided grad-cam": 0.6398970398970399
+      },
+      "occlusion": {
+        "max_drop": 0.6661681532859802,
+        "min_drop": -0.08183616399765015,
+        "positive_cells": 34
+      }
+    },
+    {
+      "image_id": 239627,
+      "cue": "cup",
+      "cue_idx": 968,
+      "spearman": {
+        "vanilla": 0.09420849420849423,
+        "deconv": 0.12483912483912483,
+        "guided": 0.19922779922779926,
+        "grad-cam": 0.2557630923019026,
+        "guided grad-cam": 0.3917631917631918
+      },
+      "occlusion": {
+        "max_drop": 1.776727549440693e-05,
+        "min_drop": -9.449458593735471e-05,
+        "positive_cells": 10
+      }
+    },
+    {
+      "image_id": 246968,
+      "cue": "microwave",
+      "cue_idx": 651,
+      "spearman": {
+        "vanilla": -0.11222651222651223,
+        "deconv": -0.09395109395109397,
+        "guided": -0.6138996138996139,
+        "grad-cam": 0.30096593489906664,
+        "guided grad-cam": -0.22882882882882882
+      },
+      "occlusion": {
+        "max_drop": 0.0004394344869069755,
+        "min_drop": -0.002672747941687703,
+        "positive_cells": 7
+      }
+    },
+    {
+      "image_id": 249025,
+      "cue": "vase",
+      "cue_idx": 883,
+      "spearman": {
+        "vanilla": -0.027799227799227798,
+        "deconv": 0.48545688545688553,
+        "guided": 0.5034749034749035,
+        "grad-cam": 0.6658944658944659,
+        "guided grad-cam": 0.6398970398970399
+      },
+      "occlusion": {
+        "max_drop": 0.5629909038543701,
+        "min_drop": -0.10154479742050171,
+        "positive_cells": 29
+      }
+    },
+    {
+      "image_id": 252219,
+      "cue": "umbrella",
+      "cue_idx": 879,
+      "spearman": {
+        "vanilla": 0.14877734877734877,
+        "deconv": -0.311969111969112,
+        "guided": 0.1274131274131274,
+        "grad-cam": 0.05767250448619204,
+        "guided grad-cam": 0.09549549549549549
+      },
+      "occlusion": {
+        "max_drop": 0.0006976793520152569,
+        "min_drop": -0.0011701503535732627,
+        "positive_cells": 20
+      }
+    },
+    {
+      "image_id": 255536,
+      "cue": "umbrella",
+      "cue_idx": 879,
+      "spearman": {
+        "vanilla": 0.07696267696267697,
+        "deconv": -0.20025740025740027,
+        "guided": -0.18326898326898328,
+        "grad-cam": 0.29292149292149294,
+        "guided grad-cam": 0.1541827541827542
+      },
+      "occlusion": {
+        "max_drop": 0.0006258161156438291,
+        "min_drop": -0.0015170101542025805,
+        "positive_cells": 27
+      }
+    },
+    {
+      "image_id": 265518,
+      "cue": "cup",
+      "cue_idx": 968,
+      "spearman": {
+        "vanilla": 0.20540540540540542,
+        "deconv": -0.28725868725868725,
+        "guided": -0.05791505791505792,
+        "grad-cam": 0.34355698629398124,
+        "guided grad-cam": 0.23912483912483914
+      },
+      "occlusion": {
+        "max_drop": 0.0030595706775784492,
+        "min_drop": -0.010901357978582382,
+        "positive_cells": 27
+      }
+    },
+    {
+      "image_id": 277689,
+      "cue": "cup",
+      "cue_idx": 968,
+      "spearman": {
+        "vanilla": -0.33693693693693694,
+        "deconv": 0.024195624195624193,
+        "guided": -0.2074646074646075,
+        "grad-cam": 0.006692406692406694,
+        "guided grad-cam": -0.12998712998713002
+      },
+      "occlusion": {
+        "max_drop": 0.0678945928812027,
+        "min_drop": -0.028682038187980652,
+        "positive_cells": 34
+      }
+    },
+    {
+      "image_id": 280710,
+      "cue": "backpack",
+      "cue_idx": 414,
+      "spearman": {
+        "vanilla": 0.25868725868725867,
+        "deconv": -0.5163449163449163,
+        "guided": -0.04066924066924067,
+        "grad-cam": 0.2882164151921742,
+        "guided grad-cam": 0.3250965250965251
+      },
+      "occlusion": {
+        "max_drop": 0.00027674456941895187,
+        "min_drop": -0.000977239804342389,
+        "positive_cells": 12
+      }
+    },
+    {
+      "image_id": 283113,
+      "cue": "cup",
+      "cue_idx": 968,
+      "spearman": {
+        "vanilla": -0.5114543114543115,
+        "deconv": -0.4646074646074646,
+        "guided": -0.7608751608751609,
+        "grad-cam": -0.16159807232282541,
+        "guided grad-cam": -0.3384813384813385
+      },
+      "occlusion": {
+        "max_drop": 2.26038032735687e-09,
+        "min_drop": -3.238850183606701e-07,
+        "positive_cells": 13
+      }
+    },
+    {
+      "image_id": 283412,
+      "cue": "cup",
+      "cue_idx": 968,
+      "spearman": {
+        "vanilla": 0.1057915057915058,
+        "deconv": -0.33127413127413136,
+        "guided": -0.059716859716859715,
+        "grad-cam": 0.26383526383526384,
+        "guided grad-cam": 0.11685971685971687
+      },
+      "occlusion": {
+        "max_drop": 0.0016802391037344933,
+        "min_drop": -0.008009236305952072,
+        "positive_cells": 25
+      }
+    },
+    {
+      "image_id": 283717,
+      "cue": "microwave",
+      "cue_idx": 651,
+      "spearman": {
+        "vanilla": 0.3505791505791506,
+        "deconv": 0.3083655083655084,
+        "guided": 0.42960102960102964,
+        "grad-cam": 0.5320026859512386,
+        "guided grad-cam": 0.5788931788931789
+      },
+      "occlusion": {
+        "max_drop": 0.3183410167694092,
+        "min_drop": -0.19595441222190857,
+        "positive_cells": 26
+      }
+    },
+    {
+      "image_id": 284445,
+      "cue": "traffic light",
+      "cue_idx": 920,
+      "spearman": {
+        "vanilla": 0.17503217503217505,
+        "deconv": -0.051994851994851994,
+        "guided": -0.029858429858429857,
+        "grad-cam": 0.046846846846846854,
+        "guided grad-cam": -0.024195624195624193
+      },
+      "occlusion": {
+        "max_drop": 0.0018582125194370747,
+        "min_drop": -0.014049992896616459,
+        "positive_cells": 20
+      }
+    },
+    {
+      "image_id": 289222,
+      "cue": "traffic light",
+      "cue_idx": 920,
+      "spearman": {
+        "vanilla": 0.20853447000052067,
+        "deconv": -0.23543799113021746,
+        "guided": 0.08997876205578022,
+        "grad-cam": 0.13232928096329336,
+        "guided grad-cam": 0.1598764270003992
+      },
+      "occlusion": {
+        "max_drop": 2.5153160095214844e-05,
+        "min_drop": -6.556510925292969e-06,
+        "positive_cells": 20
+      }
+    },
+    {
+      "image_id": 307074,
+      "cue": "traffic light",
+      "cue_idx": 920,
+      "spearman": {
+        "vanilla": 0.29884169884169887,
+        "deconv": -0.07670527670527671,
+        "guided": 0.27953667953667954,
+        "grad-cam": 0.12767052767052767,
+        "guided grad-cam": 0.2782496782496783
+      },
+      "occlusion": {
+        "max_drop": 0.06486254930496216,
+        "min_drop": -0.4502580463886261,
+        "positive_cells": 12
+      }
+    },
+    {
+      "image_id": 309678,
+      "cue": "dining table",
+      "cue_idx": 532,
+      "spearman": {
+        "vanilla": -0.3176319176319176,
+        "deconv": -0.5521235521235521,
+        "guided": 0.01698841698841699,
+        "grad-cam": 0.17868177729204143,
+        "guided grad-cam": 0.20514800514800519
+      },
+      "occlusion": {
+        "max_drop": 2.3724037419015076e-06,
+        "min_drop": -0.00010088664566865191,
+        "positive_cells": 3
+      }
+    },
+    {
+      "image_id": 319696,
+      "cue": "microwave",
+      "cue_idx": 651,
+      "spearman": {
+        "vanilla": 0.04890604890604891,
+        "deconv": -0.018790218790218794,
+        "guided": -0.040154440154440155,
+        "grad-cam": 0.08576949621000358,
+        "guided grad-cam": 0.11866151866151867
+      },
+      "occlusion": {
+        "max_drop": 0.3278762996196747,
+        "min_drop": -0.19525271654129028,
+        "positive_cells": 19
+      }
+    },
+    {
+      "image_id": 327769,
+      "cue": "cup",
+      "cue_idx": 968,
+      "spearman": {
+        "vanilla": -0.2187902187902188,
+        "deconv": -0.3057915057915058,
+        "guided": -0.13873873873873876,
+        "grad-cam": -0.2798971396213531,
+        "guided grad-cam": -0.27490347490347494
+      },
+      "occlusion": {
+        "max_drop": 5.432306124930619e-07,
+        "min_drop": -7.2752181949908845e-06,
+        "positive_cells": 7
+      }
+    },
+    {
+      "image_id": 335800,
+      "cue": "traffic light",
+      "cue_idx": 920,
+      "spearman": {
+        "vanilla": 0.390990990990991,
+        "deconv": 0.007464607464607464,
+        "guided": 0.3482625482625483,
+        "grad-cam": 0.31505791505791503,
+        "guided grad-cam": 0.42676962676962676
+      },
+      "occlusion": {
+        "max_drop": 0.016869183629751205,
+        "min_drop": -0.0418752022087574,
+        "positive_cells": 14
+      }
+    },
+    {
+      "image_id": 347370,
+      "cue": "orange",
+      "cue_idx": 950,
+      "spearman": {
+        "vanilla": -0.29755469755469754,
+        "deconv": -0.10785070785070787,
+        "guided": -0.09601029601029601,
+        "grad-cam": -0.2522522522522523,
+        "guided grad-cam": -0.1958815958815959
+      },
+      "occlusion": {
+        "max_drop": 0.014810299500823021,
+        "min_drop": -0.02576856128871441,
+        "positive_cells": 16
+      }
+    },
+    {
+      "image_id": 350388,
+      "cue": "broccoli",
+      "cue_idx": 937,
+      "spearman": {
+        "vanilla": -0.2370656370656371,
+        "deconv": 0.015186615186615189,
+        "guided": 0.003861003861003861,
+        "grad-cam": -0.01698841698841699,
+        "guided grad-cam": -0.08880308880308882
+      },
+      "occlusion": {
+        "max_drop": 0.08111358433961868,
+        "min_drop": -0.3054081201553345,
+        "positive_cells": 5
+      }
+    },
+    {
+      "image_id": 353027,
+      "cue": "pizza",
+      "cue_idx": 963,
+      "spearman": {
+        "vanilla": 0.04066924066924067,
+        "deconv": 0.20669240669240674,
+        "guided": 0.2965250965250965,
+        "grad-cam": 0.794079794079794,
+        "guided grad-cam": 0.6715572715572716
+      },
+      "occlusion": {
+        "max_drop": 0.15501952171325684,
+        "min_drop": -0.07522004842758179,
+        "positive_cells": 25
+      }
+    },
+    {
+      "image_id": 357430,
+      "cue": "pizza",
+      "cue_idx": 963,
+      "spearman": {
+        "vanilla": -0.2141570141570142,
+        "deconv": 0.6553410553410555,
+        "guided": 0.38378378378378386,
+        "grad-cam": 0.5217503217503218,
+        "guided grad-cam": 0.50990990990991
+      },
+      "occlusion": {
+        "max_drop": 0.009713053703308105,
+        "min_drop": -0.00011414289474487305,
+        "positive_cells": 33
+      }
+    },
+    {
+      "image_id": 360960,
+      "cue": "umbrella",
+      "cue_idx": 879,
+      "spearman": {
+        "vanilla": 0.2602316602316603,
+        "deconv": 0.23063063063063063,
+        "guided": 0.2682110682110682,
+        "grad-cam": 0.2898326898326899,
+        "guided grad-cam": 0.3057915057915058
+      },
+      "occlusion": {
+        "max_drop": 0.015110135078430176,
+        "min_drop": -0.00041550397872924805,
+        "positive_cells": 14
+      }
+    },
+    {
+      "image_id": 361103,
+      "cue": "traffic light",
+      "cue_idx": 920,
+      "spearman": {
+        "vanilla": 0.025997425997425997,
+        "deconv": 0.43989703989703993,
+        "guided": 0.3137709137709138,
+        "grad-cam": 0.4290862290862292,
+        "guided grad-cam": 0.4996138996138996
+      },
+      "occlusion": {
+        "max_drop": 0.5988356471061707,
+        "min_drop": -0.18143898248672485,
+        "positive_cells": 13
+      }
+    },
+    {
+      "image_id": 364166,
+      "cue": "zebra",
+      "cue_idx": 340,
+      "spearman": {
+        "vanilla": 0.019181257072416552,
+        "deconv": -0.07788362771014774,
+        "guided": -0.266992799786523,
+        "grad-cam": 0.13246653374172238,
+        "guided grad-cam": -0.1283470691355658
+      },
+      "occlusion": {
+        "max_drop": 8.940696716308594e-06,
+        "min_drop": -5.245208740234375e-06,
+        "positive_cells": 22
+      }
+    },
+    {
+      "image_id": 366225,
+      "cue": "mouse",
+      "cue_idx": 673,
+      "spearman": {
+        "vanilla": 0.25405405405405407,
+        "deconv": -0.2921492921492922,
+        "guided": 0.07876447876447876,
+        "grad-cam": 0.09420849420849423,
+        "guided grad-cam": 0.07207207207207207
+      },
+      "occlusion": {
+        "max_drop": 0.029293082654476166,
+        "min_drop": -0.0258486270904541,
+        "positive_cells": 19
+      }
+    },
+    {
+      "image_id": 367228,
+      "cue": "kite",
+      "cue_idx": 21,
+      "spearman": {
+        "vanilla": -0.39202059202059203,
+        "deconv": -0.05173745173745174,
+        "guided": -0.36962676962676966,
+        "grad-cam": 0.1866271964737192,
+        "guided grad-cam": -0.1142857142857143
+      },
+      "occlusion": {
+        "max_drop": 2.04091165301179e-07,
+        "min_drop": -2.369137655477971e-05,
+        "positive_cells": 10
+      }
+    },
+    {
+      "image_id": 377393,
+      "cue": "umbrella",
+      "cue_idx": 879,
+      "spearman": {
+        "vanilla": 0.5853281853281854,
+        "deconv": 0.7395109395109396,
+        "guided": 0.3217503217503218,
+        "grad-cam": 0.5280906118149447,
+        "guided grad-cam": 0.5842985842985844
+      },
+      "occlusion": {
+        "max_drop": 0.0047108628787100315,
+        "min_drop": -0.0076916394755244255,
+        "positive_cells": 25
+      }
+    },
+    {
+      "image_id": 378515,
+      "cue": "banana",
+      "cue_idx": 954,
+      "spearman": {
+        "vanilla": 0.014929214929214929,
+        "deconv": 0.08391248391248392,
+        "guided": 0.023680823680823682,
+        "grad-cam": -0.2177746320231261,
+        "guided grad-cam": -0.1655083655083655
+      },
+      "occlusion": {
+        "max_drop": 0.002876946236938238,
+        "min_drop": -0.0041530681774020195,
+        "positive_cells": 23
+      }
+    },
+    {
+      "image_id": 404191,
+      "cue": "refrigerator",
+      "cue_idx": 760,
+      "spearman": {
+        "vanilla": -0.05791505791505792,
+        "deconv": 0.6754182754182755,
+        "guided": -0.28416988416988415,
+        "grad-cam": 0.46833163241242554,
+        "guided grad-cam": 0.4229086229086229
+      },
+      "occlusion": {
+        "max_drop": 0.09123213589191437,
+        "min_drop": -0.11195915937423706,
+        "positive_cells": 27
+      }
+    },
+    {
+      "image_id": 407524,
+      "cue": "broccoli",
+      "cue_idx": 937,
+      "spearman": {
+        "vanilla": 0.24298584298584303,
+        "deconv": 0.00797940797940798,
+        "guided": 0.209009009009009,
+        "grad-cam": 0.30604890604890606,
+        "guided grad-cam": 0.26640926640926643
+      },
+      "occlusion": {
+        "max_drop": 0.25359657406806946,
+        "min_drop": -0.16804909706115723,
+        "positive_cells": 10
+      }
+    },
+    {
+      "image_id": 407868,
+      "cue": "kite",
+      "cue_idx": 21,
+      "spearman": {
+        "vanilla": 0.11557271557271558,
+        "deconv": -0.10913770913770915,
+        "guided": 0.1371943371943372,
+        "grad-cam": 0.462480950251255,
+        "guided grad-cam": 0.509556600578934
+      },
+      "occlusion": {
+        "max_drop": 7.566589488305908e-08,
+        "min_drop": -4.0505242395738605e-06,
+        "positive_cells": 11
+      }
+    },
+    {
+      "image_id": 409630,
+      "cue": "mouse",
+      "cue_idx": 673,
+      "spearman": {
+        "vanilla": 0.44324324324324327,
+        "deconv": -0.49266409266409267,
+        "guided": 0.08262548262548262,
+        "grad-cam": 0.7057157803421983,
+        "guided grad-cam": 0.5135135135135136
+      },
+      "occlusion": {
+        "max_drop": 0.30090808868408203,
+        "min_drop": -0.15461856126785278,
+        "positive_cells": 17
+      }
+    },
+    {
+      "image_id": 412531,
+      "cue": "parking meter",
+      "cue_idx": 704,
+      "spearman": {
+        "vanilla": 0.43011583011583016,
+        "deconv": 0.18069498069498072,
+        "guided": 0.5225225225225225,
+        "grad-cam": 0.1850707850707851,
+        "guided grad-cam": 0.3253539253539254
+      },
+      "occlusion": {
+        "max_drop": 0.28691259026527405,
+        "min_drop": -0.14661410450935364,
+        "positive_cells": 31
+      }
+    },
+    {
+      "image_id": 419653,
+      "cue": "dining table",
+      "cue_idx": 532,
+      "spearman": {
+        "vanilla": -0.011068211068211068,
+        "deconv": -0.12792792792792793,
+        "guided": -0.06615186615186616,
+        "grad-cam": 0.4927238626118225,
+        "guided grad-cam": 0.4368082368082369
+      },
+      "occlusion": {
+        "max_drop": 0.024210868403315544,
+        "min_drop": -0.1339975893497467,
+        "positive_cells": 13
+      }
+    },
+    {
+      "image_id": 425390,
+      "cue": "laptop",
+      "cue_idx": 620,
+      "spearman": {
+        "vanilla": -0.2916344916344917,
+        "deconv": -0.4507078507078507,
+        "guided": -0.48211068211068214,
+        "grad-cam": 0.018791428058733108,
+        "guided grad-cam": -0.10321750321750323
+      },
+      "occlusion": {
+        "max_drop": 0.0041492716409265995,
+        "min_drop": -0.1696263551712036,
+        "positive_cells": 17
+      }
+    },
+    {
+      "image_id": 444275,
+      "cue": "microwave",
+      "cue_idx": 651,
+      "spearman": {
+        "vanilla": -0.10476190476190476,
+        "deconv": 0.15135135135135136,
+        "guided": -0.11171171171171172,
+        "grad-cam": 0.22471042471042474,
+        "guided grad-cam": -0.11042471042471043
+      },
+      "occlusion": {
+        "max_drop": 0.4648118019104004,
+        "min_drop": -0.15472936630249023,
+        "positive_cells": 26
+      }
+    },
+    {
+      "image_id": 449190,
+      "cue": "cup",
+      "cue_idx": 968,
+      "spearman": {
+        "vanilla": -0.07001287001287002,
+        "deconv": -0.22985842985842986,
+        "guided": -0.36705276705276707,
+        "grad-cam": -0.3122466059622364,
+        "guided grad-cam": -0.3287001287001287
+      },
+      "occlusion": {
+        "max_drop": 5.681523362000007e-06,
+        "min_drop": -0.00020118712563998997,
+        "positive_cells": 10
+      }
+    },
+    {
+      "image_id": 463527,
+      "cue": "cup",
+      "cue_idx": 968,
+      "spearman": {
+        "vanilla": -0.10810810810810813,
+        "deconv": -0.12998712998713002,
+        "guided": -0.3580437580437581,
+        "grad-cam": 0.027173218769235372,
+        "guided grad-cam": -0.06383937203514808
+      },
+      "occlusion": {
+        "max_drop": 0.0013484809314832091,
+        "min_drop": -0.007003596052527428,
+        "positive_cells": 16
+      }
+    },
+    {
+      "image_id": 466986,
+      "cue": "microwave",
+      "cue_idx": 651,
+      "spearman": {
+        "vanilla": 0.0380952380952381,
+        "deconv": -0.061518661518661526,
+        "guided": 0.11196911196911198,
+        "grad-cam": 0.4713330292985689,
+        "guided grad-cam": 0.3992277992277993
+      },
+      "occlusion": {
+        "max_drop": 0.30432140827178955,
+        "min_drop": -0.18873479962348938,
+        "positive_cells": 31
+      }
+    },
+    {
+      "image_id": 476787,
+      "cue": "pizza",
+      "cue_idx": 963,
+      "spearman": {
+        "vanilla": 0.025482625482625483,
+        "deconv": -0.08391248391248392,
+        "guided": 0.03346203346203346,
+        "grad-cam": 0.3050911195688631,
+        "guided grad-cam": 0.27541827541827546
+      },
+      "occlusion": {
+        "max_drop": 0.14458860456943512,
+        "min_drop": -0.2368548959493637,
+        "positive_cells": 17
+      }
+    },
+    {
+      "image_id": 479596,
+      "cue": "orange",
+      "cue_idx": 950,
+      "spearman": {
+        "vanilla": -0.17734877734877738,
+        "deconv": 0.1861003861003861,
+        "guided": 0.1917631917631918,
+        "grad-cam": 0.27492116666749256,
+        "guided grad-cam": 0.21261261261261263
+      },
+      "occlusion": {
+        "max_drop": 0.12973716855049133,
+        "min_drop": -0.1355132758617401,
+        "positive_cells": 17
+      }
+    },
+    {
+      "image_id": 501243,
+      "cue": "zebra",
+      "cue_idx": 340,
+      "spearman": {
+        "vanilla": -0.3595881595881596,
+        "deconv": -0.24787644787644786,
+        "guided": -0.17039897039897042,
+        "grad-cam": -0.26615186615186615,
+        "guided grad-cam": -0.20334620334620335
+      },
+      "occlusion": {
+        "max_drop": 0.00012677907943725586,
+        "min_drop": -8.380413055419922e-05,
+        "positive_cells": 13
+      }
+    },
+    {
+      "image_id": 503841,
+      "cue": "traffic light",
+      "cue_idx": 920,
+      "spearman": {
+        "vanilla": 0.27799227799227805,
+        "deconv": 0.25765765765765763,
+        "guided": 0.3590733590733591,
+        "grad-cam": 0.4635778635778636,
+        "guided grad-cam": 0.4283140283140284
+      },
+      "occlusion": {
+        "max_drop": 0.10630238056182861,
+        "min_drop": -0.0021845102310180664,
+        "positive_cells": 24
+      }
+    },
+    {
+      "image_id": 509131,
+      "cue": "orange",
+      "cue_idx": 950,
+      "spearman": {
+        "vanilla": 0.3204633204633205,
+        "deconv": 0.2805662805662806,
+        "guided": 0.4936936936936937,
+        "grad-cam": 0.36653796653796655,
+        "guided grad-cam": 0.5685971685971686
+      },
+      "occlusion": {
+        "max_drop": 0.3921758234500885,
+        "min_drop": -0.15044629573822021,
+        "positive_cells": 28
+      }
+    },
+    {
+      "image_id": 512403,
+      "cue": "vase",
+      "cue_idx": 883,
+      "spearman": {
+        "vanilla": 0.07593307593307594,
+        "deconv": -0.4314028314028315,
+        "guided": 0.7773487773487774,
+        "grad-cam": 0.6378378378378379,
+        "guided grad-cam": 0.8084942084942085
+      },
+      "occlusion": {
+        "max_drop": 0.577914297580719,
+        "min_drop": -0.08444368839263916,
+        "positive_cells": 28
+      }
+    },
+    {
+      "image_id": 526103,
+      "cue": "umbrella",
+      "cue_idx": 879,
+      "spearman": {
+        "vanilla": -0.1698841698841699,
+        "deconv": -0.40952380952380957,
+        "guided": -0.23912483912483914,
+        "grad-cam": -0.052523173728496325,
+        "guided grad-cam": -0.17091377091377094
+      },
+      "occlusion": {
+        "max_drop": 6.326097263809061e-07,
+        "min_drop": -0.00011656899005174637,
+        "positive_cells": 13
+      }
+    },
+    {
+      "image_id": 553664,
+      "cue": "laptop",
+      "cue_idx": 620,
+      "spearman": {
+        "vanilla": -0.01904761904761905,
+        "deconv": -0.08133848133848134,
+        "guided": 0.05740025740025741,
+        "grad-cam": 0.10501930501930504,
+        "guided grad-cam": 0.06924066924066924
+      },
+      "occlusion": {
+        "max_drop": 0.009769674390554428,
+        "min_drop": -0.028154566884040833,
+        "positive_cells": 28
+      }
+    },
+    {
+      "image_id": 559707,
+      "cue": "broccoli",
+      "cue_idx": 937,
+      "spearman": {
+        "vanilla": -0.03835263835263836,
+        "deconv": 0.12844272844272847,
+        "guided": 0.5068211068211068,
+        "grad-cam": 0.5606177606177606,
+        "guided grad-cam": 0.5366795366795367
+      },
+      "occlusion": {
+        "max_drop": 0.006186127662658691,
+        "min_drop": -0.0003057718276977539,
+        "positive_cells": 30
+      }
+    },
+    {
+      "image_id": 562443,
+      "cue": "zebra",
+      "cue_idx": 340,
+      "spearman": {
+        "vanilla": -0.1552123552123552,
+        "deconv": -0.3647361647361648,
+        "guided": -0.10836550836550837,
+        "grad-cam": 0.32715572715572716,
+        "guided grad-cam": 0.058687258687258693
+      },
+      "occlusion": {
+        "max_drop": 0.0018810033798217773,
+        "min_drop": -0.001633763313293457,
+        "positive_cells": 15
+      }
+    },
+    {
+      "image_id": 577149,
+      "cue": "zebra",
+      "cue_idx": 340,
+      "spearman": {
+        "vanilla": 0.1953793684462798,
+        "deconv": 0.39500611446747874,
+        "guided": 0.5863955221615619,
+        "grad-cam": 0.2944848451943928,
+        "guided grad-cam": 0.5371002006102278
+      },
+      "occlusion": {
+        "max_drop": 0.0003547072410583496,
+        "min_drop": -2.3126602172851562e-05,
+        "positive_cells": 29
+      }
+    },
+    {
+      "image_id": 578871,
+      "cue": "dining table",
+      "cue_idx": 532,
+      "spearman": {
+        "vanilla": 0.23037323037323038,
+        "deconv": -0.09781209781209782,
+        "guided": -0.27696267696267696,
+        "grad-cam": 0.30347490347490347,
+        "guided grad-cam": 0.19356499356499354
+      },
+      "occlusion": {
+        "max_drop": 0.005626199766993523,
+        "min_drop": -0.024089939892292023,
+        "positive_cells": 11
+      }
+    },
+    {
+      "image_id": 578922,
+      "cue": "vase",
+      "cue_idx": 883,
+      "spearman": {
+        "vanilla": 0.018275418275418277,
+        "deconv": 0.5703989703989704,
+        "guided": 0.2965250965250965,
+        "grad-cam": 0.49292149292149295,
+        "guided grad-cam": 0.5693693693693693
+      },
+      "occlusion": {
+        "max_drop": 0.5069684982299805,
+        "min_drop": -0.08432388305664062,
+        "positive_cells": 31
+      }
+    }
+  ]
+}
