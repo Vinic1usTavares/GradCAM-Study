@@ -1,10 +1,18 @@
 """Grad-CAM reimplementado do zero.
 
-Fases 0-4: carregamento de modelos, utilitarios de imagem, saliencia por
-gradiente (vanilla | deconv | guided) e Grad-CAM (Eqs. 1-2).
+Fases 0-7: carregamento de modelos, utilitarios de imagem, saliencia por
+gradiente (vanilla | deconv | guided), Grad-CAM (Eqs. 1-2), CAM e o
+contrafactual (negacao de alpha em (1)).
 """
 
-from .core import VGG16_LAYERS, cam, gradcam, resolve_cam_layers, resolve_layer
+from .core import (
+    VGG16_LAYERS,
+    cam,
+    counterfactual,
+    gradcam,
+    resolve_cam_layers,
+    resolve_layer,
+)
 from .metrics import (
     MapFn,
     class_discrimination,
@@ -40,6 +48,7 @@ __all__ = [
     "ReluVariant",
     "cam",
     "class_discrimination",
+    "counterfactual",
     "denormalize",
     "disable_inplace_relu",
     "gradcam",

@@ -1,0 +1,56 @@
+{
+  "script": "07_counterfactual.py",
+  "model": "vgg16",
+  "image": "95786",
+  "layer": "features.29",
+  "display_scale": {
+    "high": 0.99,
+    "gamma": 0.5
+  },
+  "map_shape": [
+    14,
+    14
+  ],
+  "runs": [
+    {
+      "class": "cup",
+      "class_idx": 968,
+      "prob": 0.21759773790836334,
+      "peak_gradcam": {
+        "y": 10,
+        "x": 9,
+        "rows": 14,
+        "cols": 14
+      },
+      "peak_counterfactual": {
+        "y": 13,
+        "x": 0,
+        "rows": 14,
+        "cols": 14
+      },
+      "shift_cells": 9.486832980505138,
+      "shift_px": 151.7893276880822,
+      "spearman_gradcam_counterfactual": -0.6045923835134905
+    },
+    {
+      "class": "vase",
+      "class_idx": 883,
+      "prob": 0.012969231233000755,
+      "peak_gradcam": {
+        "y": 2,
+        "x": 9,
+        "rows": 14,
+        "cols": 14
+      },
+      "peak_counterfactual": {
+        "y": 11,
+        "x": 7,
+        "rows": 14,
+        "cols": 14
+      },
+      "shift_cells": 9.219544457292887,
+      "shift_px": 147.5127113166862,
+      "spearman_gradcam_counterfactual": -0.545858574482358
+    }
+  ]
+}

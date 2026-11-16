@@ -194,6 +194,34 @@ def cam(
     return (weighted.clamp(min=0) if apply_relu else weighted), class_idx
 
 
+def _class_weights(
+    model: nn.Module,
+    x: torch.Tensor,
+    class_idx: int | None,
+    layer: nn.Module | str | None,
+    mode: str,
+) -> tuple[torch.Tensor, torch.Tensor, int]:
+    """`alpha_k` de (1), as ativacoes `A^k` e a classe usada.
+
+    Fatorado para `gradcam` e `counterfactual` compartilharem a conta: os dois
+    diferem apenas no sinal de `alpha` aplicado em (2).
+    """
+    x = x.detach().clone().requires_grad_(True)
+    layer = _name_for_layer(model, layer)
+
+    with relu_mode(model, mode):
+        target = resolve_layer(model, layer)
+        scores, activations = _forward_with_activations(model, x, target)
+        if class_idx is None:
+            class_idx = int(scores.argmax(dim=1).item())
+
+        (grad,) = torch.autograd.grad(scores[0, class_idx], activations)
+        # (1): alpha_k = media espacial do gradiente da ativacao k.
+        alpha = grad.mean(dim=(2, 3), keepdim=True)
+
+    return alpha, activations, class_idx
+
+
 def gradcam(
     model: nn.Module,
     x: torch.Tensor,
@@ -219,20 +247,36 @@ def gradcam(
     if x.ndim != 4 or x.shape[0] != 1:
         raise ValueError(f"esperava (1, C, H, W); recebi {tuple(x.shape)}")
 
-    x = x.detach().clone().requires_grad_(True)
-    layer = _name_for_layer(model, layer)
+    alpha, activations, class_idx = _class_weights(
+        model, x, class_idx, layer, mode
+    )
+    # (2): combinacao linear das ativacoes com os pesos alpha.
+    weighted = (alpha * activations).sum(dim=1)[0]
+    return (weighted.clamp(min=0) if apply_relu else weighted), class_idx
 
-    with relu_mode(model, mode):
-        target = resolve_layer(model, layer)
-        scores, activations = _forward_with_activations(model, x, target)
-        if class_idx is None:
-            class_idx = int(scores.argmax(dim=1).item())
 
-        (grad,) = torch.autograd.grad(scores[0, class_idx], activations)
+def counterfactual(
+    model: nn.Module,
+    x: torch.Tensor,
+    class_idx: int | None = None,
+    layer: nn.Module | str | None = None,
+    apply_relu: bool = True,
+    mode: str = "vanilla",
+) -> tuple[torch.Tensor, int]:
+    """Mapa da evidencia **contra** a classe `c` (negacao de `alpha` em (1)).
 
-        # (1): alpha_k = media espacial do gradiente da ativacao k.
-        alpha = grad.mean(dim=(2, 3), keepdim=True)
-        # (2): combinacao linear das ativacoes com os pesos alpha.
-        weighted = (alpha * activations).sum(dim=1)[0]
+    O Grad-CAM responde "onde esta' o que sustenta `c`"; negar `alpha` antes do
+    ReLU de (2) responde "onde esta' o que empurra a rede para longe de `c`".
+    O ReLU continua sendo o mesmo de (2): sem ele a combinacao negativa
+    mostraria tambem as regioes neutras, e nao a evidencia contraria.
 
+    Retorna `(mapa HxW, class_idx)`, mapa cru como em `gradcam`.
+    """
+    if x.ndim != 4 or x.shape[0] != 1:
+        raise ValueError(f"esperava (1, C, H, W); recebi {tuple(x.shape)}")
+
+    alpha, activations, class_idx = _class_weights(
+        model, x, class_idx, layer, mode
+    )
+    weighted = (-alpha * activations).sum(dim=1)[0]
     return (weighted.clamp(min=0) if apply_relu else weighted), class_idx
