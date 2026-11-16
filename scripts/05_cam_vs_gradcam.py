@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import torch
 
-from gradcam.core import cam, gradcam
+from gradcam.core import cam, gradcam, resolve_cam_layers
 from gradcam.data import CocoVal
 from gradcam.metrics import spearman
 from gradcam.models import (
@@ -77,9 +77,15 @@ def main() -> int:
         indices, _ = predict(model, x, topk=1)
         class_idx = int(indices[0])
 
-    # Computa CAM e Grad-CAM
-    cam_map, _ = cam(model, x, class_idx=class_idx)
-    gc_map, _ = gradcam(model, x, class_idx=class_idx)
+    # Computa CAM e Grad-CAM na MESMA ativacao. Isto importa: `cam` usa a saida
+    # do bloco (`layer4`), enquanto o `layer=None` do `gradcam` cai na ultima
+    # `Conv2d` (`layer4[-1].conv2`, antes do BatchNorm e da soma residual).
+    # Comparar tensores diferentes da' rho ~0,987 e diferenca ~6 numa escala de
+    # 30 — plausivel o bastante para passar despercebido, e falso: no mesmo
+    # tensor, Z * Grad-CAM = CAM vale ate' o ponto flutuante.
+    layer, _ = resolve_cam_layers(model)
+    cam_map, _ = cam(model, x, class_idx=class_idx, layer=layer)
+    gc_map, _ = gradcam(model, x, class_idx=class_idx, layer=layer)
 
     # Equivalencia: Z * Grad-CAM = CAM
     Z = cam_map.numel() # ou H * W das ativacoes

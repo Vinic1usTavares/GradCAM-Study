@@ -45,6 +45,22 @@ def gradcam_map_fn(layer: nn.Module | str | None = None) -> MapFn:
     return _map_fn
 
 
+def guided_gradcam_map_fn(layer: nn.Module | str | None = None) -> MapFn:
+    """Adapta `guided.guided_gradcam` a assinatura `MapFn`.
+
+    Existe para a bateria da Fase 8 incluir o Guided Grad-CAM sem que o script
+    de avaliacao saiba que ele e' um produto de dois mapas. O mapa ja' sai na
+    resolucao da entrada e nao-negativo, como as saliencias.
+    """
+    from .guided import guided_gradcam
+
+    def _map_fn(model: nn.Module, x: torch.Tensor, class_idx: int) -> torch.Tensor:
+        heatmap, _ = guided_gradcam(model, x, class_idx, layer=layer)
+        return heatmap
+
+    return _map_fn
+
+
 def saliency_map_fn(mode: str) -> MapFn:
     """Adapta `saliency(mode=...)` a assinatura `MapFn`.
 

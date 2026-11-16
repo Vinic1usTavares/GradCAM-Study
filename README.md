@@ -68,23 +68,26 @@ scripts/           um executável por experimento
 | 2. Deconv / Guided Backprop | **concluída** — 3 mapas lado a lado |
 | 3. Teste de não-discriminação de classe | **concluída** — 0,999 em deconv/guided vs 0,642 em vanilla |
 | 4. Grad-CAM | **concluída** — mapa 14×14, Spearman entre classes 0,760 |
-| 5. CAM vs Grad-CAM (§3.1) | pendente |
-| 6. Guided Grad-CAM | pendente |
+| 5. CAM vs Grad-CAM (§3.1) | **concluída** — `Spearman` 1,000000 na mesma camada, diferença 5,7×10⁻⁶ |
+| 6. Guided Grad-CAM | **concluída** — detalhe 1,13–1,27 (≈ Guided Backprop, ~20× o CAM), top5% na box certa 0,80–0,96 em 3 dos 4 casos |
 | 7. Counterfactual | pendente |
 | 8. Pointing game + oclusão | pendente |
 | 9. Ablações | pendente |
 | 10. Sanity checks (Adebayo) | pendente |
 
-Figuras das Fases 1–4 em `results/figures/`; métricas em `results/metrics/`
+Figuras das Fases 1–6 em `results/figures/`; métricas em `results/metrics/`
 (`--overlay` troca cinza por jet):
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\02_saliency.py              # ~30 s em CPU
 .\.venv\Scripts\python.exe scripts\03_class_discrimination.py  # ~75 s em CPU
 .\.venv\Scripts\python.exe scripts\04_gradcam.py               # ~18 s em CPU
+.\.venv\Scripts\python.exe scripts\05_cam_vs_gradcam.py        # ~5 s em CPU
+.\.venv\Scripts\python.exe scripts\06_guided_gradcam.py        # ~13 s em CPU
 
 # figura de dois objetos: uma classe por objeto (5 s)
 .\.venv\Scripts\python.exe scripts\04_gradcam.py --images 95786 --classes cup,vase
+.\.venv\Scripts\python.exe scripts\06_guided_gradcam.py --images 54931 --classes bubble,ox
 ```
 
 O resultado é o do artigo: as três regras produzem estéticas distintas na mesma
@@ -117,6 +120,34 @@ objeto (`04_gradcam_vgg16_95786_cup-vase.png`), o mapa de `cup` acende o copo e
 o de `vase` acende o vaso, com `Spearman` 0,467 entre os dois — a discriminação
 que o `deconv`/`guided` não tem (0,999) e que o Grad-CAM passa a ter.
 
+A Fase 5 fecha a prova do §3.1 num modelo `conv → GAP → fc`: lendo CAM e Grad-CAM
+**na mesma ativação**, `Z · Grad-CAM = CAM` até o ponto flutuante — `Spearman`
+1,000000, diferença máxima 5,7×10⁻⁶, `Z` = 49 células de `layer4`. O detalhe que
+custou a medição: `layer=None` não cai na mesma camada nos dois métodos (`cam`
+usa a saída do bloco; `gradcam`, a última `Conv2d`, **antes** do BatchNorm e da
+soma residual). Comparar tensores diferentes dá 0,987 e diferença 6,1 — número
+plausível e falso, que passou por "equivalência numérica" até alguém perguntar de
+onde vinham os 6,1.
+
+A Fase 6 compõe as duas peças: `L_guided = Upsample(L_GradCAM) ⊙ GuidedBackprop`.
+O critério de aceite tem duas metades e `06_guided_gradcam.py` mede as duas. O
+índice de detalhe (variação total normalizada) do produto fica em **1,13–1,27**,
+em cima do Guided Backprop (1,14–1,24) e ~20× o CAM interpolado (0,05–0,06): a
+textura volta. E a localização sobrevive na maioria dos casos — top5% dos pixels
+mais fortes **dentro da box de ground truth** do objeto certo em **0,80–0,96** em
+3 dos 4 casos, com o caso limpo em `54931`: `bubble` acende a pessoa (0,93) e não
+o cavalo (0,00); `ox` acende o cavalo (0,96) e não a pessoa (0,01).
+
+A ressalva que os números obrigam a escrever: o `Spearman` entre as duas classes
+**sobe** nos quatro casos, porque o termo de detalhe é quase invariante à classe
+(0,999 na Fase 3) — e o top5% na box certa cai um pouco em 6 dos 7 casos medidos.
+"Detalhe fino sem perder discriminação" vale para *onde* o mapa acende, não para
+a ordenação fina dos pixels. Os 4 casos (`22892`, `23781`, `47585`, `54931`) foram
+escolhidos por medida, e os descartados (`61333`, `106389`, onde nenhuma classe de
+estante/cadeira localiza) estão registrados no plano. Notebook:
+`notebooks/06_guided.ipynb`, que chama `gradcam/guided.py` e serve para ver a
+composição, não para reimplementá-la.
+
 
 ## Reprodutibilidade
 
@@ -135,7 +166,10 @@ Fluxo do colaborador: clonar → `pip install -r requirements.txt` →
 Registradas no `plans/general_plan.md`, seção 0. Resumo: VGG-16 em CPU
 (~330 ms/forward, ~1 s/backward), top-1 de 63% em 27 imagens do COCO val2017
 restritas às 18 categorias que são classes ImageNet verbatim; não-discriminação
-de classe de 0,999 (deconv/guided) e 0,642 (vanilla) em 16 imagens.
+de classe de 0,999 (deconv/guided) e 0,642 (vanilla) em 16 imagens; equivalência
+CAM = Z · Grad-CAM exata (1,000000, 5,7×10⁻⁶) na mesma camada; e Guided Grad-CAM
+com detalhe de 1,13–1,27 (≈ Guided Backprop) mantendo 0,80–0,96 do top5% na box
+de ground truth certa em 3 dos 4 casos.
 
 Decisão de ambiente: **CPU**, não GPU. Não existe wheel CUDA do torch 2.15 para
 Python 3.14 (os índices param em 2.14.1+cu126), e ~330 ms/forward é suficiente
