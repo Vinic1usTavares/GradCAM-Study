@@ -1,0 +1,9 @@
+{
+  "model": "resnet18",
+  "image": "61333",
+  "class_idx": 453,
+  "class_name": "bookcase",
+  "spearman": 0.9871415501958877,
+  "max_abs_diff": 6.127950668334961,
+  "Z": 49
+}
