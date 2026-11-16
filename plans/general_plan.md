@@ -210,6 +210,109 @@ gradiente com peso não nulo), e é uma diferença silenciosa — o mapa continu
 plausível.
 
 
+### Medições da etapa 5
+
+`scripts/05_cam_vs_gradcam.py`, ResNet18, caso `61333` (classe `bookcase`,
+camada `layer4`, 7×7):
+
+| Métrica | Valor |
+|---|---|
+| Spearman(CAM, Grad-CAM) | **1,000000** |
+| max abs(Z · Grad-CAM − CAM) | 5,7 × 10⁻⁶ |
+| Z = H·W da ativação | 49 |
+
+A equivalência não é "quase": no mesmo tensor, `Z · Grad-CAM = CAM` até o ponto
+flutuante (a diferença é 2 × 10⁻⁷ da escala do CAM). Duas armadilhas apareceram no
+caminho, e a primeira é a que interessa:
+
+1. **`layer=None` não é a mesma camada nos dois métodos.** `cam` usa a saída do
+   bloco (`layer4`); `resolve_layer(model, None)` devolve a última `Conv2d`
+   (`layer4[-1].conv2`), que vem **antes** do BatchNorm e da soma residual. Comparar
+   os dois dá rho 0,987 e diferença máxima de 6,1 numa escala de 30 — plausível, e
+   errado. O script agora resolve a camada uma vez (`resolve_cam_layers`) e passa a
+   mesma para os dois; o teste (`tests/test_cam.py`) já fazia isso com
+   `layer="layer4"`, e foi o script que se afastou dele.
+2. **`Z` é a contagem de células da ativação, não de pixels da entrada**: 7×7 = 49
+   no `layer4`, 14×14 = 196 no VGG-16. Usar 224² multiplicaria o mapa por 1024.
+
+Detalhe que só aparece depois da correção: o erro anterior era **silencioso** — o
+mapa continuava parecendo um Grad-CAM, e o rho de 0,987 passava por "equivalência
+numérica" sem que ninguém perguntasse de onde vinham os 6,1. É o mesmo tipo de falha
+que `relu_mode` resolveu na Fase 4: dois métodos, duas capturas, nenhum aviso.
+
+### Medições da etapa 6
+
+`scripts/06_guided_gradcam.py`, VGG-16, camada = saída do último bloco (14×14),
+4 casos curados × 2 classes, ~13 s em CPU. Duas medidas, uma para cada metade do
+critério de aceite:
+
+- **detalhe** — índice de variação total, `(mean|dx| + mean|dy|) / mean|m|`,
+  invariante a escala. Sem ele, comparar o CAM (~0,1) com o Guided Backprop (~2)
+  seria comparar magnitudes.
+- **localização** — fração dos 5% pixels mais fortes que cai dentro da box de ground
+  truth do objeto **certo**, com a box do outro objeto como controle (o argmax
+  isolado é frágil: o produto pode deslocar um pixel de borda).
+
+| imagem | classe (prob) | top5% GGC na box certa (na do outro) | top5% CAM na box certa | detalhe CAM / GB / GGC | rho CAM | rho GGC |
+|---|---|---|---|---|---|---|
+| 22892 | Egyptian cat (0,05%) | 0,94 (0,13) | 1,00 | 0,06 / 1,18 / 1,27 | +0,062 | +0,343 |
+| 22892 | beagle (0,08%) | 0,80 (0,20) | 1,00 | 0,06 / 1,18 / 1,13 | | |
+| 23781 | broccoli (0,23%) | 0,63 (—) | 0,94 | 0,05 / 1,14 / 1,17 | +0,595 | +0,799 |
+| 23781 | cucumber (23,5%) | — (0,20) | — | 0,06 / 1,14 / 1,15 | | |
+| 47585 | groom (91,2%) | 0,88 (0,24) | 0,79 | 0,06 / 1,20 / 1,20 | +0,016 | +0,326 |
+| 47585 | umbrella (3,8%) | 0,93 (0,22) | 1,00 | 0,06 / 1,20 / 1,20 | | |
+| 54931 | bubble (12,8%) | 0,93 (0,00) | 0,99 | 0,06 / 1,24 / 1,24 | −0,058 | −0,009 |
+| 54931 | ox (5,7%) | 0,96 (0,01) | 1,00 | 0,06 / 1,24 / 1,27 | | |
+
+**A metade "resolução" do critério está cumprida, e com folga.** O índice de detalhe
+do Guided Grad-CAM (1,13 – 1,27) fica em cima do Guided Backprop (1,14 – 1,24) e
+~20× acima do CAM interpolado (0,05 – 0,06): o produto de fato devolve a textura, e
+o efeito é o mesmo nos quatro casos. Os zooms (`06_..._23781_zoom.png`,
+`06_..._47585_zoom.png`) mostram isso no recorte: o CAM é uma grade de 14×14
+interpolada, o produto desenha as hastes do brócolis e os setores do guarda-chuva.
+
+**A metade "discriminação" se sustenta na box, não na ordenação de pixels.** O
+top5% na box do objeto certo fica entre 0,80 e 0,96 em 3 dos 4 casos, com a box do
+outro objeto em ≤ 0,24 (`54931` é o caso limpo: `bubble` → 0,93 na pessoa e 0,00 no
+cavalo; `ox` → 0,96 no cavalo e 0,01 na pessoa). Três ressalvas medidas:
+
+1. **O produto não melhora a localização do CAM** — em 6 dos 7 casos em que as
+   duas medidas existem, o top5% na box certa cai um pouco (1,00 → 0,94; 1,00 →
+   0,80; 0,94 → 0,63); a exceção é `groom` (0,79 → 0,88). Multiplicar por um campo
+   não-negativo só move massa para onde o Guided Backprop é claro, e ele tem suporte
+   de borda próprio. Quem localiza continua sendo a máscara do CAM.
+2. **O rho entre as duas classes sobe em todos os quatro casos** (+0,28, +0,20,
+   +0,31, +0,05). É o esperado: o termo de detalhe é quase invariante à classe
+   (0,999 na Fase 3), então somá-lo puxa a ordenação para um campo de textura
+   comum. Onde as máscaras do CAM realmente diferem (`54931`, rho −0,058) a
+   diferença sobrevive (−0,009); onde elas já se sobrepunham (`22892` +0,062,
+   `47585` +0,016) o produto apenas se parece mais com ele mesmo. Ou seja: a frase
+   "detalhe fino **sem perder** discriminação" vale para *onde* (box), não para a
+   *ordenação fina* dos pixels — e esta é a leitura honesta.
+3. **O pior caso é o mais parecido**: `23781` (brócolis × pepino) cai de 0,94
+   (CAM) para 0,63, e o pepino nem tem box anotada — os 37% que saem da box do
+   brócolis não podem ser atribuídos a nada. É a limitação do caso, não uma medida
+   de erro do método.
+
+Casos medidos e **descartados**, que valem registro porque são o limite do método:
+
+| imagem | cue | prob | top5% GGC na box certa | na box do gato |
+|---|---|---|---|---|
+| 61333 | `bookcase` (top-1) | 44,7% | 0,27 | 0,69 |
+| 61333 | `bookshop` | 10,1% | 0,31 | 0,61 |
+| 61333 | `quilt` / `pillow` / `studio couch` | 0,7 – 6,7% | 0,09 – 0,12 | 0,89 – 0,92 |
+| 106389 | `rocking chair` | 0,6% | 0,57 | 0,27 |
+| 95786 | `cup` / `vase` | 21,8% / 1,3% | 0,79 / 0,75 | — |
+
+Em `61333` o gato domina o gradiente qualquer que seja o cue: **nenhuma** classe de
+estante ou colcha localiza a estante, nem antes nem depois do produto. `95786`
+funciona (0,79 / 0,75), mas foi descartado por curadoria — é a mesma imagem da Fase 4
+e repetiria a figura; `106389`, que seria o par "gato × cadeira", também falha. O que
+sobra é a regra prática: o Guided Grad-CAM herda a localização do CAM, então escolher
+imagem por medida — e não por intuição — é parte do método. A triagem rodou sobre o
+val2017 com 2–3 objetos grandes e separados (lado ≥ 120 px, área ≥ 3% da imagem,
+centros a ≥ 30% da diagonal — 326 imagens) e ficou com 4 casos.
+
 ### Restrição descoberta: COCO × ImageNet
 
 Apenas **18** das 80 categorias do COCO são classes ImageNet verbatim
@@ -358,8 +461,8 @@ MapFn = Callable[[nn.Module, torch.Tensor, int], torch.Tensor]   # (modelo, entr
 | **2** | Deconv e Guided Backprop (mesma conta, outra máscara) | 3 mapas lado a lado da mesma imagem/classe |
 | **3** | **Não-discriminação de classe**: `Spearman(map_cat, map_dog)` na mesma imagem | GB alto, mostrando quantitativamente o problema que o paper resolve — **medido: 0,999 em deconv/guided, 0,642 em vanilla** |
 | **4** | Grad-CAM (Eqs. 1–2) | mapa de "cat" no gato e de "dog" no cachorro, na mesma foto — **cumprido em `95786` com `--classes cup,vase`: `cup` acende o copo, `vase` acende o vaso, Spearman 0,467**. Proxy no pareamento top-1/top-2: 0,760 contra 0,999 de deconv/guided; controle entre imagens +0,009–0,211 |
-| **5** | CAM em ResNet18 (`conv → GAP → fc`) e equivalência numérica com Grad-CAM | Spearman > 0,9 na mesma camada; valida a prova da §3.1 |
-| **6** | Guided Grad-CAM = Fase 4 ⊙ Fase 2 | detalhe fino (listras) sem perder discriminação de classe |
+| **5** | CAM em ResNet18 (`conv → GAP → fc`) e equivalência numérica com Grad-CAM | Spearman > 0,9 na mesma camada; valida a prova da §3.1 — **medido: Spearman 1,000000 e max abs(Z·Grad-CAM − CAM) 5,7 × 10⁻⁶**. Sem fixar a camada, os dois métodos capturam tensores diferentes e o número cai para 0,987 (ver seção 0) |
+| **6** | Guided Grad-CAM = Fase 4 ⊙ Fase 2 | detalhe fino (listras) sem perder discriminação de classe — **medido: detalhe 1,13–1,27, em cima do Guided Backprop (1,14–1,24) e ~20× o CAM (0,05–0,06); top5% na box certa 0,80–0,96 em 3 dos 4 casos** (`broccoli` em 0,63 é o pior). Ressalva medida: o rho entre classes **sobe** nos quatro casos, porque o termo de detalhe é quase invariante à classe |
 | **7** | Counterfactual (negar o gradiente em (1)) | mapa desloca para a evidência contrária |
 | **8** | Pointing game + Spearman vs oclusão, **todos os métodos na mesma bateria** | tabela comparável em ordenação à Tabela 1/2 do paper |
 | **9** | Ablações (ReLU on/off, GAP vs GMP, camada conv3_3/4_3/5_3, gradiente vanilla/guided/deconv) | reproduzir a **direção** da Tabela 3 |

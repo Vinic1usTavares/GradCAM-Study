@@ -112,7 +112,7 @@ Tempos conforme §6. Soma 29 min + 3 min de folga = 32 min.
 | `03_cam` | 4 · 2 min | "CAM: e se eu tirar o FC?" | cirurgia no ResNet18 `conv → GAP → fc`; CAM via hook; custo de 2,98% top-1 | 1 s | Fase 5 |
 | `04_gradcam` | 5 · 4 min | "como obter CAM sem trocar a arquitetura?" | **derivação em 8 células**: hook em `A` → `y^c` → one-hot → `α=GAP(∂y/∂A)` → `ΣαA` → `ReLU` → upsample → overlay; célula-espelho `gradcam(model, x, c)`; **fecha com a figura de dois objetos** (`95786`, `cup`/`vase`, rho 0,467) calculada na célula — a discriminação que deconv/guided não tem | 3 s | Fase 4 ✅ |
 | `05_equivalencia` | 6 · 3 min | "Grad-CAM é mesmo um CAM generalizado?" | `w_k = Z·α_k`; scatter CAM × Grad-CAM na mesma camada; Spearman > 0,9 | 1 s | Fase 5 |
-| `06_guided` | 7 · 2 min | "dá para ter resolução **e** discriminação?" | `Grad-CAM ⊙ GB`; zoom nas listras da zebra; comparar resolução (224) com classe | 3 s | Fase 6 |
+| `06_guided` | 7 · 2 min | "dá para ter resolução **e** discriminação?" | `Grad-CAM ⊙ GB`; zoom nas hastes do brócolis e nos setores do guarda-chuva; comparar resolução (224) com classe | 4 s | Fase 6 |
 | `07_counterfactual` | bônus · 1 min | "e a evidência *contra*?" | negar `α` em (1); mapa migra para o objeto vizinho | 3 s | Fase 7 |
 | `08_numeros` | 8 · 3 min | "nossos números vs paper" | pointing game + Spearman vs oclusão, todos os métodos; barras da **ordenação** nossa × paper, lidas do JSON | 0 | Fases 8–9 |
 | `09_sanity` | 9 · 3 min | "isso é fiel ao modelo?" | cascade randomization: correlação cai monotonicamente; GB "chapado" × Grad-CAM estável | 15 s | Fase 10 |
