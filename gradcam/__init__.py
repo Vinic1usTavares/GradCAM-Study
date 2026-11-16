@@ -1,14 +1,17 @@
 """Grad-CAM reimplementado do zero.
 
-Fases 0-4: carregamento de modelos, utilitarios de imagem, saliencia por
-gradiente (vanilla | deconv | guided) e Grad-CAM (Eqs. 1-2).
+Fases 0-6: carregamento de modelos, utilitarios de imagem, saliencia por
+gradiente (vanilla | deconv | guided), CAM (Zhou et al.), Grad-CAM (Eqs. 1-2) e
+Guided Grad-CAM (`gradcam . guided backprop`).
 """
 
 from .core import VGG16_LAYERS, cam, gradcam, resolve_cam_layers, resolve_layer
+from .guided import compose_guided_gradcam, guided_gradcam
 from .metrics import (
     MapFn,
     class_discrimination,
     gradcam_map_fn,
+    guided_gradcam_map_fn,
     saliency_map_fn,
     saliency_map_fns,
     spearman,
@@ -40,11 +43,14 @@ __all__ = [
     "ReluVariant",
     "cam",
     "class_discrimination",
+    "compose_guided_gradcam",
     "denormalize",
     "disable_inplace_relu",
     "gradcam",
     "gradcam_map_fn",
     "guided_backprop",
+    "guided_gradcam",
+    "guided_gradcam_map_fn",
     "imagenet_labels",
     "input_gradient",
     "load_model",
